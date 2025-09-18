@@ -1,36 +1,48 @@
 package com.mcmp.cost.ncp.collector.batch;
 
-import com.mcmp.cost.ncp.collector.entity.NcpApiCredential;
-import com.mcmp.cost.ncp.collector.repository.NcpApiCredentialRepository;
+import com.mcmp.cost.ncp.collector.dto.NcpApiCredentialDto;
+import com.mcmp.cost.ncp.collector.properties.NcpCredentialProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.stereotype.Component;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class NcpCredentialItemReader implements ItemReader<NcpApiCredential> {
+public class NcpCredentialItemReader implements ItemReader<NcpApiCredentialDto> {
 
-    private final NcpApiCredentialRepository ncpApiCredentialRepository;
-    private Iterator<NcpApiCredential> credentialIterator;
+    private final NcpCredentialProperties ncpCredentialProperties;
+    private Iterator<NcpApiCredentialDto> credentialIterator;
 
     @Override
-    public NcpApiCredential read() {
+    public NcpApiCredentialDto read() {
         if (credentialIterator == null) {
-            List<NcpApiCredential> credentials = ncpApiCredentialRepository.findAll();
+            List<NcpApiCredentialDto> credentials = getCredentials();
             credentialIterator = credentials.iterator();
-            log.info("Ncp credentials loaded: {} items", credentials.size());
+            log.info("Azure credentials loaded: {} items", credentials.size());
         }
 
         if (credentialIterator.hasNext()) {
-            NcpApiCredential credential = credentialIterator.next();
-            log.debug("Reading credential for tenant: {}", credential.getId());
-            return credential;
+            NcpApiCredentialDto azureApiCredentialDto = credentialIterator.next();
+            log.debug("Reading credential for tenant.");
+            return azureApiCredentialDto;
         }
 
-        return null; // 더 이상 읽을 데이터가 없음
+        return null;
+    }
+
+    private List<NcpApiCredentialDto> getCredentials() {
+        List<NcpApiCredentialDto> credentials = new ArrayList<>();
+        NcpApiCredentialDto ncpApiCredentialDto = new NcpApiCredentialDto();
+
+        ncpApiCredentialDto.setIamAccessKey(ncpCredentialProperties.getIamAccessKey());
+        ncpApiCredentialDto.setIamSecretKey(ncpCredentialProperties.getIamSecretKey());
+
+        credentials.add(ncpApiCredentialDto);
+        return credentials;
     }
 }

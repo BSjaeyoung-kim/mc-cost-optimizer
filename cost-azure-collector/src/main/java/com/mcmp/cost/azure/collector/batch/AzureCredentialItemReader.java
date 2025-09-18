@@ -7,6 +7,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.stereotype.Component;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 @Slf4j
 @StepScope
@@ -15,9 +18,27 @@ import org.springframework.stereotype.Component;
 public class AzureCredentialItemReader implements ItemReader<AzureApiCredentialDto> {
 
     private final AzureCredentialProperties azureCredentialProperties;
+    private Iterator<AzureApiCredentialDto> credentialIterator;
 
     @Override
     public AzureApiCredentialDto read() {
+        if (credentialIterator == null) {
+            List<AzureApiCredentialDto> credentials = getCredentials();
+            credentialIterator = credentials.iterator();
+            log.info("Azure credentials loaded: {} items", credentials.size());
+        }
+
+        if (credentialIterator.hasNext()) {
+            AzureApiCredentialDto azureApiCredentialDto = credentialIterator.next();
+            log.debug("Reading credential for tenant: {}", azureApiCredentialDto.getTenantId());
+            return azureApiCredentialDto;
+        }
+
+        return null;
+    }
+
+    private List<AzureApiCredentialDto> getCredentials() {
+        List<AzureApiCredentialDto> credentials = new ArrayList<>();
         AzureApiCredentialDto azureApiCredentialDto = new AzureApiCredentialDto();
 
         azureApiCredentialDto.setTenantId(azureCredentialProperties.getTenantId());
@@ -25,7 +46,7 @@ public class AzureCredentialItemReader implements ItemReader<AzureApiCredentialD
         azureApiCredentialDto.setClientSecret(azureCredentialProperties.getClientSecret());
         azureApiCredentialDto.setSubscriptionId(azureCredentialProperties.getSubscriptionId());
 
-        log.info("Azure credentials loaded: {} items", azureCredentialProperties.getTenantId());
-        return azureApiCredentialDto;
+        credentials.add(azureApiCredentialDto);
+        return credentials;
     }
 }

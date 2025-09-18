@@ -1,6 +1,6 @@
 package com.mcmp.cost.ncp.collector.service;
 
-import com.mcmp.cost.ncp.collector.entity.NcpApiCredential;
+import com.mcmp.cost.ncp.collector.dto.NcpApiCredentialDto;
 import com.mcmp.cost.ncp.collector.entity.NcpCostServiceMonth;
 import com.mcmp.cost.ncp.collector.entity.NcpCostVmMonth;
 import java.util.List;
@@ -15,10 +15,10 @@ public interface NcpCostMonthService {
      * 조회 하는 API의 공식 문서는 다음과 같다.
      * <a href="https://api.ncloud-docs.com/docs/platform-costandusage-getproductdemandcostlist">getProductDemandCostList</a>
      *
-     * @param ncpApiCredential {@link NcpApiCredential}
+     * @param ncpApiCredentialDto {@link NcpApiCredentialDto}
      * @return {@link NcpCostServiceMonth} 리스트 데이터 타입.
      */
-    List<NcpCostServiceMonth> getCostByService(NcpApiCredential ncpApiCredential);
+    List<NcpCostServiceMonth> getCostByService(NcpApiCredentialDto ncpApiCredentialDto);
 
     /**
      * 설정 기간에 따라 VM별 청구 비용 목록을 조회한다. </br>
@@ -28,8 +28,8 @@ public interface NcpCostMonthService {
      * 조회 하는 API의 공식 문서는 다음과 같다.
      * <a href="https://api.ncloud-docs.com/docs/platform-costandusage-getcontractdemandcostlist">getContractDemandCostList</a>
      *
-     * @param ncpApiCredential {@link NcpApiCredential}
+     * @param ncpApiCredentialDto {@link NcpApiCredentialDto}
      * @return {@link NcpCostVmMonth} 리스트 데이터 타입.
      */
-    List<NcpCostVmMonth> getCostByVm(NcpApiCredential ncpApiCredential);
+    List<NcpCostVmMonth> getCostByVm(NcpApiCredentialDto ncpApiCredentialDto);
 }

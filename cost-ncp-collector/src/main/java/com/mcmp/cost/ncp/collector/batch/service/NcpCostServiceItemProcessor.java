@@ -1,6 +1,6 @@
 package com.mcmp.cost.ncp.collector.batch.service;
 
-import com.mcmp.cost.ncp.collector.entity.NcpApiCredential;
+import com.mcmp.cost.ncp.collector.dto.NcpApiCredentialDto;
 import com.mcmp.cost.ncp.collector.entity.NcpCostServiceMonth;
 import com.mcmp.cost.ncp.collector.service.NcpCostMonthService;
 import lombok.RequiredArgsConstructor;
@@ -12,13 +12,13 @@ import java.util.List;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class NcpCostServiceItemProcessor implements ItemProcessor<NcpApiCredential, List<NcpCostServiceMonth>> {
+public class NcpCostServiceItemProcessor implements ItemProcessor<NcpApiCredentialDto, List<NcpCostServiceMonth>> {
 
     private final NcpCostMonthService ncpCostMonthService;
 
     @Override
-    public List<NcpCostServiceMonth> process(NcpApiCredential ncpApiCredential) throws Exception {
-        log.info("Processing Ncp cost data for tenant: {}", ncpApiCredential.getId());
-        return ncpCostMonthService.getCostByService(ncpApiCredential);
+    public List<NcpCostServiceMonth> process(NcpApiCredentialDto ncpApiCredentialDto) throws Exception {
+        log.info("Processing Ncp Service cost data for tenant.");
+        return ncpCostMonthService.getCostByService(ncpApiCredentialDto);
     }
 }

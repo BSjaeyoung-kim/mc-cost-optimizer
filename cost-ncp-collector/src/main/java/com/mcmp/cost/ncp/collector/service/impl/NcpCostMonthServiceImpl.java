@@ -8,7 +8,7 @@ import com.mcmp.cost.ncp.collector.dto.ContractDemandCostListWrapper;
 import com.mcmp.cost.ncp.collector.dto.ProductDemandCost;
 import com.mcmp.cost.ncp.collector.dto.ProductDemandCostList;
 import com.mcmp.cost.ncp.collector.dto.ProductDemandCostListWrapper;
-import com.mcmp.cost.ncp.collector.entity.NcpApiCredential;
+import com.mcmp.cost.ncp.collector.dto.NcpApiCredentialDto;
 import com.mcmp.cost.ncp.collector.entity.NcpCostServiceMonth;
 import com.mcmp.cost.ncp.collector.entity.NcpCostVmMonth;
 import com.mcmp.cost.ncp.collector.service.NcpCostMonthService;
@@ -30,10 +30,10 @@ public class NcpCostMonthServiceImpl implements NcpCostMonthService {
 
     private final RestTemplateConfig restTemplateConfig;
 
-    public List<NcpCostServiceMonth> getCostByService(NcpApiCredential ncpApiCredential) {
+    public List<NcpCostServiceMonth> getCostByService(NcpApiCredentialDto ncpApiCredentialDto) {
         RestTemplate restTemplate = restTemplateConfig.createRestTemplateWithKey(
-                ncpApiCredential.getIamAccessKey(),
-                ncpApiCredential.getIamSecretKey());
+                ncpApiCredentialDto.getIamAccessKey(),
+                ncpApiCredentialDto.getIamSecretKey());
 
         LocalDate today = LocalDate.now(ZoneId.systemDefault());
         String yearMonth = DateUtils.getYearMonth(today);
@@ -82,10 +82,10 @@ public class NcpCostMonthServiceImpl implements NcpCostMonthService {
     }
 
     @Override
-    public List<NcpCostVmMonth> getCostByVm(NcpApiCredential ncpApiCredential) {
+    public List<NcpCostVmMonth> getCostByVm(NcpApiCredentialDto ncpApiCredentialDto) {
         RestTemplate restTemplate = restTemplateConfig.createRestTemplateWithKey(
-                ncpApiCredential.getIamAccessKey(),
-                ncpApiCredential.getIamSecretKey());
+                ncpApiCredentialDto.getIamAccessKey(),
+                ncpApiCredentialDto.getIamSecretKey());
 
         LocalDate today = LocalDate.now(ZoneId.systemDefault());
         String yearMonth = DateUtils.getYearMonth(today);

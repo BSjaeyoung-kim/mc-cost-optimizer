@@ -15,7 +15,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class NcpBatchExecutorService {
+public class BatchExecutorService {
 
     private final JobLauncher jobLauncher;
     private final Map<String, Job> jobMap;
@@ -24,7 +24,7 @@ public class NcpBatchExecutorService {
         Job job = getJobByType(ncpBatchType);
         try {
             JobParameters jobParameters = new JobParametersBuilder()
-                    .addLong("timestamp", System.currentTimeMillis())
+                    .addLong("timestamp", System.currentTimeMillis(), true)
                     .toJobParameters();
 
             JobExecution jobExecution = jobLauncher.run(job, jobParameters);
@@ -35,11 +35,6 @@ public class NcpBatchExecutorService {
             log.error("Error running {} Batch Job", ncpBatchType.getDisplayName(), e);
             throw new RuntimeException("Batch execution failed: " + ncpBatchType.getDisplayName(), e);
         }
-    }
-
-    @Async
-    public void asyncExecuteBatch(NcpBatchType ncpBatchType) {
-        this.executeBatch(ncpBatchType);
     }
 
     private Job getJobByType(NcpBatchType ncpBatchType) {

@@ -2,7 +2,7 @@ package com.mcmp.cost.ncp.collector.batch.vm;
 
 import com.mcmp.cost.ncp.collector.batch.NcpBatchConstants;
 import com.mcmp.cost.ncp.collector.batch.NcpCredentialItemReader;
-import com.mcmp.cost.ncp.collector.entity.NcpApiCredential;
+import com.mcmp.cost.ncp.collector.dto.NcpApiCredentialDto;
 import com.mcmp.cost.ncp.collector.entity.NcpCostVmMonth;
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.Job;
@@ -37,10 +37,11 @@ public class NcpCostVmBatchConfig {
     @Bean(name = NcpBatchConstants.NCP_COST_VM_STEP)
     public Step ncpCostVmStep() {
         return new StepBuilder(NcpBatchConstants.NCP_COST_VM_STEP, jobRepository)
-                .<NcpApiCredential, List<NcpCostVmMonth>>chunk(1, transactionManager)
+                .<NcpApiCredentialDto, List<NcpCostVmMonth>>chunk(1, transactionManager)
                 .reader(ncpCredentialItemReader)
                 .processor(ncpCostVmItemProcessor)
                 .writer(ncpCostVmItemWriter)
+                .allowStartIfComplete(true)
                 .build();
     }
 }
