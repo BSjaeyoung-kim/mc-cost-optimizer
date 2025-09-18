@@ -2,7 +2,7 @@ package com.mcmp.cost.azure.collector.batch.service;
 
 import com.mcmp.cost.azure.collector.batch.AzureBatchConstants;
 import com.mcmp.cost.azure.collector.batch.AzureCredentialItemReader;
-import com.mcmp.cost.azure.collector.entity.AzureApiCredential;
+import com.mcmp.cost.azure.collector.dto.AzureApiCredentialDto;
 import com.mcmp.cost.azure.collector.entity.AzureCostServiceDaily;
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.Job;
@@ -37,10 +37,11 @@ public class AzureCostServiceBatchConfig {
     @Bean(name = AzureBatchConstants.AZURE_COST_SERVICE_STEP)
     public Step azureCostServiceStep() {
         return new StepBuilder(AzureBatchConstants.AZURE_COST_SERVICE_STEP, jobRepository)
-                .<AzureApiCredential, List<AzureCostServiceDaily>>chunk(1, transactionManager)
+                .<AzureApiCredentialDto, List<AzureCostServiceDaily>>chunk(1, transactionManager)
                 .reader(azureCredentialItemReader)
                 .processor(azureCostServiceItemProcessor)
                 .writer(azureCostServiceItemWriter)
+                .allowStartIfComplete(true)
                 .build();
     }
 }

@@ -33,3 +33,10 @@ spring:
 logging:
   level:
     com.mcmp.cost.azure.collector.service: debug
+
+azure:
+  credential:
+    tenant-id: ${TENANT_ID:tenantId}
+    client-id: ${CLIENT_ID:clientId}
+    client-secret: ${CLIENT_SECRET:clientSecret}
+    subscription-id: ${SUBSCRIPTION_ID:subscriptionId}

@@ -1,36 +1,31 @@
 package com.mcmp.cost.azure.collector.batch;
 
-import com.mcmp.cost.azure.collector.entity.AzureApiCredential;
-import com.mcmp.cost.azure.collector.repository.AzureApiCredentialRepository;
+import com.mcmp.cost.azure.collector.dto.AzureApiCredentialDto;
+import com.mcmp.cost.azure.collector.properties.AzureCredentialProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.stereotype.Component;
-import java.util.Iterator;
-import java.util.List;
 
 @Slf4j
+@StepScope
 @Component
 @RequiredArgsConstructor
-public class AzureCredentialItemReader implements ItemReader<AzureApiCredential> {
+public class AzureCredentialItemReader implements ItemReader<AzureApiCredentialDto> {
 
-    private final AzureApiCredentialRepository azureApiCredentialRepository;
-    private Iterator<AzureApiCredential> credentialIterator;
+    private final AzureCredentialProperties azureCredentialProperties;
 
     @Override
-    public AzureApiCredential read() {
-        if (credentialIterator == null) {
-            List<AzureApiCredential> credentials = azureApiCredentialRepository.findAll();
-            credentialIterator = credentials.iterator();
-            log.info("Azure credentials loaded: {} items", credentials.size());
-        }
+    public AzureApiCredentialDto read() {
+        AzureApiCredentialDto azureApiCredentialDto = new AzureApiCredentialDto();
 
-        if (credentialIterator.hasNext()) {
-            AzureApiCredential credential = credentialIterator.next();
-            log.debug("Reading credential for tenant: {}", credential.getTenantId());
-            return credential;
-        }
+        azureApiCredentialDto.setTenantId(azureCredentialProperties.getTenantId());
+        azureApiCredentialDto.setClientId(azureCredentialProperties.getClientId());
+        azureApiCredentialDto.setClientSecret(azureCredentialProperties.getClientSecret());
+        azureApiCredentialDto.setSubscriptionId(azureCredentialProperties.getSubscriptionId());
 
-        return null; // 더 이상 읽을 데이터가 없음
+        log.info("Azure credentials loaded: {} items", azureCredentialProperties.getTenantId());
+        return azureApiCredentialDto;
     }
 }

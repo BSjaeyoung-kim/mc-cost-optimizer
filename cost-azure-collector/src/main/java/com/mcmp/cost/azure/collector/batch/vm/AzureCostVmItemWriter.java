@@ -4,12 +4,14 @@ import com.mcmp.cost.azure.collector.entity.AzureCostVmDaily;
 import com.mcmp.cost.azure.collector.repository.AzureCostVmDailyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.item.Chunk;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.stereotype.Component;
 import java.util.List;
 
 @Slf4j
+@StepScope
 @Component
 @RequiredArgsConstructor
 public class AzureCostVmItemWriter implements ItemWriter<List<AzureCostVmDaily>> {

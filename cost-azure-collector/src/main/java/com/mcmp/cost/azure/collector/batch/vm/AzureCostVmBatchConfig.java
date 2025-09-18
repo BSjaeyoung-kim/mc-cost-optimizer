@@ -2,7 +2,7 @@ package com.mcmp.cost.azure.collector.batch.vm;
 
 import com.mcmp.cost.azure.collector.batch.AzureBatchConstants;
 import com.mcmp.cost.azure.collector.batch.AzureCredentialItemReader;
-import com.mcmp.cost.azure.collector.entity.AzureApiCredential;
+import com.mcmp.cost.azure.collector.dto.AzureApiCredentialDto;
 import com.mcmp.cost.azure.collector.entity.AzureCostVmDaily;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,25 +39,11 @@ public class AzureCostVmBatchConfig {
     @Bean(name = AzureBatchConstants.AZURE_COST_VM_STEP)
     public Step azureCostVmStep() {
         return new StepBuilder(AzureBatchConstants.AZURE_COST_VM_STEP, jobRepository)
-                .<AzureApiCredential, List<AzureCostVmDaily>>chunk(1, transactionManager)
+                .<AzureApiCredentialDto, List<AzureCostVmDaily>>chunk(1, transactionManager)
                 .reader(azureCredentialItemReader)
                 .processor(azureCostVmItemProcessor)
                 .writer(azureCostVmItemWriter)
+                .allowStartIfComplete(true)
                 .build();
     }
-
-//    @Bean
-//    public ItemReader<AzureApiCredential> azureCredentialReader() {
-//        return azureCredentialItemReader;
-//    }
-//
-//    @Bean
-//    public ItemProcessor<AzureApiCredential, List<AzureCostVmDaily>> azureCostVmProcessor() {
-//        return azureCostVmItemProcessor;
-//    }
-//
-//    @Bean
-//    public ItemWriter<List<AzureCostVmDaily>> azureCostVmWriter() {
-//        return new AzureCostVmItemWriter(azureCostVmDailyRepository);
-//    }
 }

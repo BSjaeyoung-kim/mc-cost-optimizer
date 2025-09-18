@@ -7,7 +7,6 @@ import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import java.util.Map;
 
@@ -15,7 +14,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class AzureBatchExecutorService {
+public class BatchExecutorService {
 
     private final JobLauncher jobLauncher;
     private final Map<String, Job> jobMap;
@@ -24,7 +23,7 @@ public class AzureBatchExecutorService {
         Job job = getJobByType(azureBatchType);
         try {
             JobParameters jobParameters = new JobParametersBuilder()
-                    .addLong("timestamp", System.currentTimeMillis())
+                    .addLong("timestamp", System.currentTimeMillis(), true)
                     .toJobParameters();
 
             JobExecution jobExecution = jobLauncher.run(job, jobParameters);
@@ -35,11 +34,6 @@ public class AzureBatchExecutorService {
             log.error("Error running {} Batch Job", azureBatchType.getDisplayName(), e);
             throw new RuntimeException("Batch execution failed: " + azureBatchType.getDisplayName(), e);
         }
-    }
-
-    @Async
-    public void asyncExecuteBatch(AzureBatchType azureBatchType) {
-        this.executeBatch(azureBatchType);
     }
 
     private Job getJobByType(AzureBatchType azureBatchType) {

@@ -1,6 +1,6 @@
 package com.mcmp.cost.azure.collector.controller;
 
-import com.mcmp.cost.azure.collector.batch.AzureBatchExecutorService;
+import com.mcmp.cost.azure.collector.batch.AsyncExecutorService;
 import com.mcmp.cost.azure.collector.batch.AzureBatchType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -13,17 +13,17 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping(value = "/api")
 public class AzureBatchJobController {
 
-    private final AzureBatchExecutorService azureBatchExecutorService;
+    private final AsyncExecutorService batchExecutorService;
 
     @GetMapping(value = "/batch/azure/service")
     public ResponseEntity<String> batchAzureService() {
-        azureBatchExecutorService.asyncExecuteBatch(AzureBatchType.AZURE_COST_SERVICE);
+        batchExecutorService.asyncExecuteBatch(AzureBatchType.AZURE_COST_SERVICE);
         return ResponseEntity.ok("Azure Cost Service Batch Job started successfully");
     }
 
     @GetMapping(value = "/batch/azure/vm")
     public ResponseEntity<String> batchAzureVm() {
-        azureBatchExecutorService.asyncExecuteBatch(AzureBatchType.AZURE_COST_VM);
+        batchExecutorService.asyncExecuteBatch(AzureBatchType.AZURE_COST_VM);
         return ResponseEntity.ok("Azure Cost VM Batch Job started successfully");
     }
 }

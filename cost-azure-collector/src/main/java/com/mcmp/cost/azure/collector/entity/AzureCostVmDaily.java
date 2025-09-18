@@ -66,6 +66,12 @@ public class AzureCostVmDaily extends AuditEntity {
     private String resourceId;
 
     /**
+     * vm 아이디 (resourceId의 맨마지막 / 뒤 값, ex) vm-1
+     */
+    @Column(name = "vm_id", nullable = false)
+    private String vmId;
+
+    /**
      * 리소스 고유 아이디. ex) 00000000-0000-0000-0000-00000000000
      */
     @Column(name = "resource_guid", nullable = false)
@@ -78,7 +84,7 @@ public class AzureCostVmDaily extends AuditEntity {
     private String currency;
 
     @Builder
-    public AzureCostVmDaily(Long id, String tenantId, String subscriptionId, Double preTaxCost, String usageDate, String resourceGroupName, String resourceId, String resourceGuid, String currency) {
+    public AzureCostVmDaily(Long id, String tenantId, String subscriptionId, Double preTaxCost, String usageDate, String resourceGroupName, String resourceId, String vmId, String resourceGuid, String currency) {
         this.id = id;
         this.tenantId = tenantId;
         this.subscriptionId = subscriptionId;
@@ -86,6 +92,7 @@ public class AzureCostVmDaily extends AuditEntity {
         this.usageDate = usageDate;
         this.resourceGroupName = resourceGroupName;
         this.resourceId = resourceId;
+        this.vmId = vmId;
         this.resourceGuid = resourceGuid;
         this.currency = currency;
     }
