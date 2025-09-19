@@ -66,7 +66,25 @@ public class AzureCostVmDaily extends AuditEntity {
     private String resourceId;
 
     /**
-     * vm 아이디 (resourceId의 맨마지막 / 뒤 값, ex) vm-1
+     * region 명. ex) koreacentral
+     */
+    @Column(name = "region", nullable = false)
+    private String region;
+
+    /**
+     * 인스턴스 타입. ex) Standard_DS3_v2
+     */
+    @Column(name = "instance_type", nullable = false)
+    private String instanceType;
+
+    /**
+     * 인스턴스 os 타입. ex) WINDOWS
+     */
+    @Column(name = "os_type", nullable = false)
+    private String osType;
+
+    /**
+     * vm 아이디 ex) vm-1
      */
     @Column(name = "vm_id", nullable = false)
     private String vmId;
@@ -84,7 +102,7 @@ public class AzureCostVmDaily extends AuditEntity {
     private String currency;
 
     @Builder
-    public AzureCostVmDaily(Long id, String tenantId, String subscriptionId, Double preTaxCost, String usageDate, String resourceGroupName, String resourceId, String vmId, String resourceGuid, String currency) {
+    public AzureCostVmDaily(Long id, String tenantId, String subscriptionId, Double preTaxCost, String usageDate, String resourceGroupName, String resourceId, String region, String instanceType, String osType, String vmId, String resourceGuid, String currency) {
         this.id = id;
         this.tenantId = tenantId;
         this.subscriptionId = subscriptionId;
@@ -92,6 +110,9 @@ public class AzureCostVmDaily extends AuditEntity {
         this.usageDate = usageDate;
         this.resourceGroupName = resourceGroupName;
         this.resourceId = resourceId;
+        this.region = region;
+        this.instanceType = instanceType;
+        this.osType = osType;
         this.vmId = vmId;
         this.resourceGuid = resourceGuid;
         this.currency = currency;

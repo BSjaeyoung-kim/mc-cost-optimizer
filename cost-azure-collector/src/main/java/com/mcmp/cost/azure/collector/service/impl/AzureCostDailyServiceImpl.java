@@ -2,6 +2,8 @@ package com.mcmp.cost.azure.collector.service.impl;
 
 import com.azure.core.management.profile.AzureProfile;
 import com.azure.identity.ClientSecretCredential;
+import com.azure.resourcemanager.AzureResourceManager;
+import com.azure.resourcemanager.compute.models.VirtualMachine;
 import com.azure.resourcemanager.costmanagement.CostManagementManager;
 import com.azure.resourcemanager.costmanagement.models.QueryDefinition;
 import com.azure.resourcemanager.costmanagement.models.QueryResult;
@@ -82,10 +84,16 @@ public class AzureCostDailyServiceImpl implements AzureCostDailyService {
                 .queries()
                 .usage(scope, query);
 
+        AzureResourceManager azureResourceManager = AzureResourceManager.authenticate(credential, profile)
+                .withSubscription(azureApiCredentialDto.getSubscriptionId());
+
         // 6. DB Insert
         List<AzureCostVmDaily> azureCostVmDailyList = new ArrayList<>();
         for (List<Object> row : queryResult.rows()) {
             String resourceId = row.get(3).toString();
+            // 7. VM 정보 조회.
+            VirtualMachine vm = azureResourceManager.virtualMachines().getById(resourceId);
+
             AzureCostVmDaily azureCostVmDaily = AzureCostVmDaily.builder()
                     .tenantId(azureApiCredentialDto.getTenantId())
                     .subscriptionId(azureApiCredentialDto.getSubscriptionId())
@@ -93,7 +101,10 @@ public class AzureCostDailyServiceImpl implements AzureCostDailyService {
                     .usageDate(row.get(1).toString())
                     .resourceGroupName(row.get(2).toString())
                     .resourceId(resourceId)
-                    .vmId(resourceId.substring(resourceId.lastIndexOf("/") + 1))
+                    .region(vm.regionName())
+                    .instanceType(vm.size().getValue())
+                    .osType(vm.osType().name())
+                    .vmId(vm.name())
                     .resourceGuid(row.get(4).toString())
                     .currency(row.get(5).toString())
                     .build();
