@@ -1,8 +1,8 @@
 package com.mcmp.azure.vm.rightsizer.batch;
 
+import com.mcmp.azure.vm.rightsizer.client.AlarmServiceClient;
 import com.mcmp.azure.vm.rightsizer.dto.AlarmHistoryDto;
 import com.mcmp.azure.vm.rightsizer.dto.RecommendVmTypeDto;
-import com.mcmp.azure.vm.rightsizer.mapper.AlarmHistoryMapper;
 import com.mcmp.azure.vm.rightsizer.properties.AzureCredentialProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +11,7 @@ import org.springframework.batch.item.Chunk;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.stereotype.Component;
 import java.sql.Timestamp;
+import java.util.List;
 
 @Slf4j
 @StepScope
@@ -19,7 +20,7 @@ import java.sql.Timestamp;
 public class RecommendVmListItemWriter implements ItemWriter<RecommendVmTypeDto> {
 
     private final AzureCredentialProperties azureCredentialProperties;
-    private final AlarmHistoryMapper alarmHistoryMapper;
+    private final AlarmServiceClient alarmServiceClient;
 
     @Override
     public void write(Chunk<? extends RecommendVmTypeDto> chunk) throws Exception {
@@ -28,6 +29,7 @@ public class RecommendVmListItemWriter implements ItemWriter<RecommendVmTypeDto>
 
             // TODO : API 연동 필요
             AlarmHistoryDto alarmHistoryDto = AlarmHistoryDto.builder()
+                    .alarmType(List.of("mail"))
                     // Abnormal (비정상), Resize(사이즈 변경), Unused(미사용)
                     .eventType("Resize")
                     .resourceId(recommendVmTypeDto.getVmId())
@@ -40,13 +42,12 @@ public class RecommendVmListItemWriter implements ItemWriter<RecommendVmTypeDto>
                     .plan("Up")
                     .note("인스턴스(" + recommendVmTypeDto.getVmId() + ")를 기존 타입 : "
                             + recommendVmTypeDto.getCurrentType() + "에서 "
-                            + recommendVmTypeDto.getRecommendType() + "Sizing으로 변경하는 것을 추천드립니다.")
+                            + recommendVmTypeDto.getRecommendType() + "Sizing 으로 변경하는 것을 추천드립니다.")
                     .occureDate(new Timestamp(System.currentTimeMillis()))
                     .cspType("AZURE")
-                    .alarmImpl("mail")
-                    .projectCd("projectCd")
+                    .projectCd("ns01")
                     .build();
-            alarmHistoryMapper.insertAlarmHistory(alarmHistoryDto);
+            alarmServiceClient.sendOptiAlarmMail(alarmHistoryDto);
             log.info("Saved {} Azure Vm Size Up Alarm History to database", recommendVmTypeDto.getVmId());
         }
     }

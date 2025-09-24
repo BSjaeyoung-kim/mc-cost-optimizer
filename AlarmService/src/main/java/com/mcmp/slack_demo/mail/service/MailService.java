@@ -14,6 +14,7 @@ import jakarta.mail.internet.MimeUtility;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -48,6 +49,9 @@ public class MailService {
     @Autowired
     private CommonService commonService;
 
+    @Value("${spring.profiles.active:local}")
+    private String activeProfile;
+
     public void sendEmail(CostOptiAlarmReqModel optiAlarmReqModel, ClassPathResource file){
         SendMailFormModel mailFormModel = new SendMailFormModel();
         BeanUtils.copyProperties(optiAlarmReqModel, mailFormModel);
@@ -55,7 +59,8 @@ public class MailService {
         mailFormModel.setAlarm_impl("mail");
 
         int checkDuplicateMail = commonService.getAlertDuplicate(mailFormModel);
-        if(checkDuplicateMail >= 1){
+        log.info("activeProfile:{}", activeProfile);
+        if(checkDuplicateMail >= 1 && !activeProfile.equals("local")){
             log.info("############Send OptiAlertEmail Duplicate : {} - {} - {}############", mailFormModel.getEvent_type(), mailFormModel.getResource_id()
                     , (mailFormModel.getAccount_id() != null ? mailFormModel.getAccount_id() : mailFormModel.getProject_cd()));
             return;
@@ -66,7 +71,9 @@ public class MailService {
             MimeMessage mimeMessage = emailSender.createMimeMessage();
 
             // find mail receiver
-            mailFormModel.setTo(getAlarmMailReceivers(optiAlarmReqModel));
+            // TODO : 테이블에 들어가는 정확한 데이터를 알기전엔 임시로 처리한다.
+            // mailFormModel.setTo(getAlarmMailReceivers(optiAlarmReqModel));
+            mailFormModel.setTo(activeProfile.equals("local") ? List.of("dongwoo.seo@opsnow.com") : getAlarmMailReceivers(optiAlarmReqModel));
 
             String mailMessage = "[MCMP-Notice] Cost Alarm occurred";
             switch (optiAlarmReqModel.getEvent_type()){
