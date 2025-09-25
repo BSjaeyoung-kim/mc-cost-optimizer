@@ -29,6 +29,14 @@ azure:
     client-secret: ${CLIENT_SECRET:clientSecret}
     subscription-id: ${SUBSCRIPTION_ID:subscriptionId}
 
-mcmp:
-  url:
-    alarm-service: ${ALARM_SERVICE:alarm_service}
+costopti:
+  alarmservice:
+    url: ${ALARM_SERVICE:alarm_service}
+  assetcollector:
+    url: http://localhost:8091
+  costcollector:
+    url: http://localhost:8081
+  costprocessor:
+    url: http://localhost:8082
+  costselector:
+    url: http://localhost:8083

@@ -1,6 +1,6 @@
 package com.mcmp.azure.vm.rightsizer.client;
 
-import com.mcmp.azure.vm.rightsizer.properties.McmpUrlProperties;
+import com.mcmp.azure.vm.rightsizer.properties.AlarmServiceUrlProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,11 +12,11 @@ import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 @RequiredArgsConstructor
 public class AlarmServiceConfig {
 
-    private final McmpUrlProperties mcmpUrlProperties;
+    private final AlarmServiceUrlProperties alarmServiceUrlProperties;
 
     @Bean
     RestClient alarmRestClient(RestClient.Builder builder) {
-        return builder.baseUrl(mcmpUrlProperties.getAlarmService()).build();
+        return builder.baseUrl(alarmServiceUrlProperties.getUrl()).build();
     }
 
     @Bean

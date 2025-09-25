@@ -6,8 +6,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @Getter
 @RequiredArgsConstructor
-@ConfigurationProperties(prefix = "mcmp.url")
-public class McmpUrlProperties {
+@ConfigurationProperties(prefix = "costopti.alarmservice")
+public class AlarmServiceUrlProperties {
 
-    private final String alarmService;
+    private final String url;
 }
