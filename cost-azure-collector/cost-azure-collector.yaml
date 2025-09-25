@@ -1,0 +1,30 @@
+openapi: "3.1.0"
+info:
+  title: "mc_cost_optimizer API"
+  description: "mc_cost_optimizer API"
+  version: "1.0.0"
+servers:
+  - url: "https://localhost:8093"
+paths:
+  /api/batch/azure/service:
+    get:
+      summary: "Azure Service 들의 전날의 이용 금액을 수집한다."
+      operationId: "batchAzureService"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                type: "string"
+  /api/batch/azure/vm:
+    get:
+      summary: "Azure VM 들의 전날의 이용 금액을 수집한다."
+      operationId: "batchAzureService"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                type: "string"

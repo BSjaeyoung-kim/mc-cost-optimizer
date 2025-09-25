@@ -1,0 +1,30 @@
+openapi: "3.1.0"
+info:
+  title: "mc_cost_optimizer API"
+  description: "mc_cost_optimizer API"
+  version: "1.0.0"
+servers:
+  - url: "https://localhost:8094"
+paths:
+  /api/batch/ncp/service:
+    get:
+      summary: "NCP Service 들의 이달의 월간 이용 누적금액을 수집한다."
+      operationId: "batchNcpService"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                type: "string"
+  /api/batch/ncp/vm:
+    get:
+      summary: "NCP VM 들의 이 달의 월간 이용 누적금액을 수집한다."
+      operationId: "batchNcpVm"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            '*/*':
+              schema:
+                type: "string"

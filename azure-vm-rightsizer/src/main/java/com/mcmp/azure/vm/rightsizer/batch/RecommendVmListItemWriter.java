@@ -3,6 +3,7 @@ package com.mcmp.azure.vm.rightsizer.batch;
 import com.mcmp.azure.vm.rightsizer.client.AlarmServiceClient;
 import com.mcmp.azure.vm.rightsizer.dto.AlarmHistoryDto;
 import com.mcmp.azure.vm.rightsizer.dto.RecommendVmTypeDto;
+import com.mcmp.azure.vm.rightsizer.mapper.AlarmHistoryMapper;
 import com.mcmp.azure.vm.rightsizer.properties.AzureCredentialProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +21,7 @@ import java.util.List;
 public class RecommendVmListItemWriter implements ItemWriter<RecommendVmTypeDto> {
 
     private final AzureCredentialProperties azureCredentialProperties;
+    private final AlarmHistoryMapper alarmHistoryMapper;
     private final AlarmServiceClient alarmServiceClient;
 
     @Override
@@ -48,6 +50,7 @@ public class RecommendVmListItemWriter implements ItemWriter<RecommendVmTypeDto>
                     .projectCd("ns01")
                     .build();
             alarmServiceClient.sendOptiAlarmMail(alarmHistoryDto);
+            alarmHistoryMapper.insertAlarmHistory(alarmHistoryDto);
             log.info("Saved {} Azure Vm Size Up Alarm History to database", recommendVmTypeDto.getVmId());
         }
     }

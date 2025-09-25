@@ -28,3 +28,7 @@ azure:
     client-id: ${CLIENT_ID:clientId}
     client-secret: ${CLIENT_SECRET:clientSecret}
     subscription-id: ${SUBSCRIPTION_ID:subscriptionId}
+
+mcmp:
+  url:
+    alarm-service: ${ALARM_SERVICE:alarm_service}
