@@ -39,6 +39,18 @@ public class NcpCostVmMonth extends AuditEntity {
     private String demandMonth;
 
     /**
+     * 리전 코드. ex) KR
+     */
+    @Column(name = "region_code", nullable = false)
+    private String regionCode;
+
+    /**
+     * 서버 스펙 코드. ex) s2-g2-s50
+     */
+    @Column(name = "server_spec_code", nullable = false)
+    private String serverSpecCode;
+
+    /**
      * 인스턴스 번호. ex) 00000000
      */
     @Column(name = "instance_no", nullable = false)
@@ -105,10 +117,12 @@ public class NcpCostVmMonth extends AuditEntity {
     private String payCurrency;
 
     @Builder
-    public NcpCostVmMonth(Long id, String memberNo, String demandMonth, String instanceNo, String instanceName, String usageUnitCode, String usageUnitName, Double productPrice, Double unitUsageQuantity, Double totalUnitUsageQuantity, Double useAmount, Double demandAmount, Date writeDate, String payCurrency) {
+    public NcpCostVmMonth(Long id, String memberNo, String demandMonth, String serverSpecCode, String regionCode, String instanceNo, String instanceName, String usageUnitCode, String usageUnitName, Double productPrice, Double unitUsageQuantity, Double totalUnitUsageQuantity, Double useAmount, Double demandAmount, Date writeDate, String payCurrency) {
         this.id = id;
         this.memberNo = memberNo;
         this.demandMonth = demandMonth;
+        this.serverSpecCode = serverSpecCode;
+        this.regionCode = regionCode;
         this.instanceNo = instanceNo;
         this.instanceName = instanceName;
         this.usageUnitCode = usageUnitCode;

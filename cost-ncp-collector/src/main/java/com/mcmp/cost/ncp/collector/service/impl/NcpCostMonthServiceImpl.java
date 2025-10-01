@@ -1,22 +1,26 @@
 package com.mcmp.cost.ncp.collector.service.impl;
 
-import com.mcmp.cost.ncp.collector.config.RestTemplateConfig;
+import com.mcmp.cost.ncp.collector.config.RestClientConfig;
 import com.mcmp.cost.ncp.collector.constants.NcpApiUrl;
 import com.mcmp.cost.ncp.collector.dto.ContractDemandCost;
 import com.mcmp.cost.ncp.collector.dto.ContractDemandCostList;
 import com.mcmp.cost.ncp.collector.dto.ContractDemandCostListWrapper;
+import com.mcmp.cost.ncp.collector.dto.NcpApiCredentialDto;
 import com.mcmp.cost.ncp.collector.dto.ProductDemandCost;
 import com.mcmp.cost.ncp.collector.dto.ProductDemandCostList;
 import com.mcmp.cost.ncp.collector.dto.ProductDemandCostListWrapper;
-import com.mcmp.cost.ncp.collector.dto.NcpApiCredentialDto;
+import com.mcmp.cost.ncp.collector.dto.ServerInstance;
+import com.mcmp.cost.ncp.collector.dto.ServerInstanceDetailWrapper;
+import com.mcmp.cost.ncp.collector.dto.ServerInstanceList;
 import com.mcmp.cost.ncp.collector.entity.NcpCostServiceMonth;
 import com.mcmp.cost.ncp.collector.entity.NcpCostVmMonth;
+import com.mcmp.cost.ncp.collector.repository.NcpCostVmMonthRepository;
 import com.mcmp.cost.ncp.collector.service.NcpCostMonthService;
 import com.mcmp.cost.ncp.collector.utils.DateUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -28,10 +32,11 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class NcpCostMonthServiceImpl implements NcpCostMonthService {
 
-    private final RestTemplateConfig restTemplateConfig;
+    private final RestClientConfig restClientConfig;
+    private final NcpCostVmMonthRepository ncpCostVmMonthRepository;
 
     public List<NcpCostServiceMonth> getCostByService(NcpApiCredentialDto ncpApiCredentialDto) {
-        RestTemplate restTemplate = restTemplateConfig.createRestTemplateWithKey(
+        RestClient restClient = restClientConfig.createRestClientWithKey(
                 ncpApiCredentialDto.getIamAccessKey(),
                 ncpApiCredentialDto.getIamSecretKey());
 
@@ -45,7 +50,10 @@ public class NcpCostMonthServiceImpl implements NcpCostMonthService {
                 + "&responseFormatType=json";
         log.debug("url: {}", url);
 
-        ProductDemandCostListWrapper response = restTemplate.getForObject(url, ProductDemandCostListWrapper.class);
+        ProductDemandCostListWrapper response = restClient.get()
+                .uri(url)
+                .retrieve()
+                .body(ProductDemandCostListWrapper.class);
         ProductDemandCostList productDemandCostList = Objects.requireNonNull(response).getGetProductDemandCostListResponse();
 
         List<NcpCostServiceMonth> ncpCostServiceMonthList = new ArrayList<>();
@@ -83,7 +91,7 @@ public class NcpCostMonthServiceImpl implements NcpCostMonthService {
 
     @Override
     public List<NcpCostVmMonth> getCostByVm(NcpApiCredentialDto ncpApiCredentialDto) {
-        RestTemplate restTemplate = restTemplateConfig.createRestTemplateWithKey(
+        RestClient restClient = restClientConfig.createRestClientWithKey(
                 ncpApiCredentialDto.getIamAccessKey(),
                 ncpApiCredentialDto.getIamSecretKey());
 
@@ -97,7 +105,10 @@ public class NcpCostMonthServiceImpl implements NcpCostMonthService {
                 + "&responseFormatType=json";
         log.debug("url: {}", url);
 
-        ContractDemandCostListWrapper response = restTemplate.getForObject(url, ContractDemandCostListWrapper.class);
+        ContractDemandCostListWrapper response = restClient.get()
+                .uri(url)
+                .retrieve()
+                .body(ContractDemandCostListWrapper.class);
         ContractDemandCostList contractDemandCostList = Objects.requireNonNull(response).getGetContractDemandCostListResponse();
 
         // 매일 청구 비용이 NCP에서 한국시간 8시쯤 제공한다.
@@ -117,11 +128,26 @@ public class NcpCostMonthServiceImpl implements NcpCostMonthService {
         }
 
         for (ContractDemandCost contractDemandCost : contractDemandCostList.getContractDemandCostList()) {
+            // Instance 정보 조회.(serverSpecCode을 조회하기 위한 용도)
+            String instanceDetailUrl = NcpApiUrl.SERVER_DETAIL_URL
+                    + "?serverInstanceNo=" + contractDemandCost.getContract().getContractProductList().getFirst().getInstanceNo()
+                    + "&responseFormatType=json";
+            ServerInstanceDetailWrapper instanceResponse = restClient.get()
+                    .uri(instanceDetailUrl)
+                    .retrieve()
+                    .body(ServerInstanceDetailWrapper.class);
+            ServerInstanceList serverInstanceList = Objects.requireNonNull(instanceResponse)
+                    .getGetServerInstanceDetailResponse();
+            ServerInstance serverInstance = serverInstanceList.getServerInstanceList().getFirst();
+
+            // DB Insert.
             NcpCostVmMonth ncpCostVmMonth = NcpCostVmMonth.builder()
                     .memberNo(contractDemandCost.getMemberNo())
                     .demandMonth(contractDemandCost.getDemandMonth())
-                    .instanceNo(contractDemandCost.getContract().getContractProductList().getFirst().getInstanceNo())
-                    .instanceName(contractDemandCost.getContract().getInstanceName())
+                    .regionCode(contractDemandCost.getRegionCode())
+                    .serverSpecCode(serverInstance.getServerSpecCode())
+                    .instanceNo(serverInstance.getServerInstanceNo())
+                    .instanceName(serverInstance.getServerName())
                     .usageUnitCode(contractDemandCost.getUsageUnit().getCode())
                     .usageUnitName(contractDemandCost.getUsageUnit().getCodeName())
                     .productPrice(contractDemandCost.getProductPrice())
@@ -135,7 +161,8 @@ public class NcpCostMonthServiceImpl implements NcpCostMonthService {
             log.debug("NcpCostVmMonth: {}", ncpCostVmMonth.toString());
             ncpCostVmMonthList.add(ncpCostVmMonth);
         }
-
+        // API로 조회한 원천 데이터를 그대로 수집. 일일 데이터는 배치를 통해서 정제하여 다른 테이블에 수집한다.
+        ncpCostVmMonthRepository.saveAll(ncpCostVmMonthList);
         return ncpCostVmMonthList;
     }
 }
