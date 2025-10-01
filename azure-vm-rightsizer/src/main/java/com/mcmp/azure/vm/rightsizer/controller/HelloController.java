@@ -2,6 +2,7 @@ package com.mcmp.azure.vm.rightsizer.controller;
 
 import com.mcmp.azure.vm.rightsizer.dto.RecommendVmTypeDto;
 import com.mcmp.azure.vm.rightsizer.service.RecommendVmService;
+import com.mcmp.azure.vm.rightsizer.service.impl.AnomalyCostVmServiceImpl;
 import com.mcmp.azure.vm.rightsizer.service.impl.RecommendVmServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,11 +18,18 @@ public class HelloController {
 
     private final RecommendVmServiceImpl recommendVmServiceImpl;
     private final RecommendVmService recommendVmService;
+    private final AnomalyCostVmServiceImpl anomalyVmServiceImpl;
 
     @GetMapping(value = "/azure/recommend/test")
-    public ResponseEntity<String> test() {
+    public ResponseEntity<String> test1() {
         recommendVmServiceImpl.test();
         return ResponseEntity.ok("Test Recommend Up, Down, Modernize");
+    }
+
+    @GetMapping(value = "/azure/anomaly/test")
+    public ResponseEntity<String> test2() {
+        anomalyVmServiceImpl.test();
+        return ResponseEntity.ok("Test Anomaly VM.");
     }
 
     @GetMapping(value = "/azure/recommend/test/up/{vmId}")

@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping(value = "/api")
-public class AzureBatchRecommendController {
+public class AzureBatchController {
 
     private final AsyncExecutorService batchExecutorService;
 
@@ -19,5 +19,11 @@ public class AzureBatchRecommendController {
     public ResponseEntity<String> recommendAzureVm() {
         batchExecutorService.asyncExecuteBatch(RightSizeType.AZURE_SIZE_UP_VM);
         return ResponseEntity.ok("Azure Recommend VM Type Batch Job started successfully");
+    }
+
+    @GetMapping(value = "/batch/azure/anomaly")
+    public ResponseEntity<String> anomalyAzureVm() {
+        batchExecutorService.asyncExecuteBatch(RightSizeType.AZURE_ANOMALY_VM);
+        return ResponseEntity.ok("Azure Anomaly VM Type Batch Job started successfully");
     }
 }

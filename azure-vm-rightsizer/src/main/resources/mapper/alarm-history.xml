@@ -6,33 +6,30 @@
 <mapper namespace="com.mcmp.azure.vm.rightsizer.mapper.AlarmHistoryMapper">
 
     <insert id="insertAlarmHistory" parameterType="com.mcmp.azure.vm.rightsizer.dto.AlarmHistoryDto">
-        INSERT INTO alarm_history (
-            event_type,
-            resource_id,
-            resource_type,
-            occure_dt,
-            account_id,
-            urgency,
-            plan,
-            note,
-            occure_date,
-            csp_type,
-            alarm_impl,
-            project_cd
-        ) VALUES (
-                     #{eventType},
-                     #{resourceId},
-                     #{resourceType},
-                     #{occureDt},
-                     #{accountId},
-                     #{urgency},
-                     #{plan},
-                     #{note},
-                     #{occureDate},
-                     #{cspType},
-                     'mail',
-                     #{projectCd}
-                 )
+        INSERT INTO alarm_history (event_type,
+                                   resource_id,
+                                   resource_type,
+                                   occure_dt,
+                                   account_id,
+                                   urgency,
+                                   plan,
+                                   note,
+                                   occure_date,
+                                   csp_type,
+                                   alarm_impl,
+                                   project_cd)
+        VALUES (#{eventType},
+                #{resourceId},
+                #{resourceType},
+                #{occureDt},
+                #{accountId},
+                #{urgency},
+                #{plan},
+                #{note},
+                #{occureDate},
+                #{cspType},
+                'mail',
+                #{projectCd})
     </insert>
 
 </mapper>

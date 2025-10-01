@@ -1,5 +1,6 @@
 package com.mcmp.azure.vm.rightsizer.batch;
 
+import com.mcmp.azure.vm.rightsizer.dto.AnomalyDto;
 import com.mcmp.azure.vm.rightsizer.dto.AzureCostVmDailyDto;
 import com.mcmp.azure.vm.rightsizer.dto.RecommendVmTypeDto;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,9 @@ public class RightSizeBatchConfig {
     private final RecommendVmListItemReader recommendVmListItemReader;
     private final RecommendVmListItemProcessor recommendVmItemProcessor;
     private final RecommendVmListItemWriter recommendVmListItemWriter;
+    private final AnomalyVmListItemReader anomalyVmListItemReader;
+    private final AnomalyVmListItemProcessor anomalyVmItemProcessor;
+    private final AnomalyVmListItemWriter anomalyVmItemWriter;
 
     @Bean(name = RightSizeBatchConstants.SIZE_UP_JOB)
     public Job recommendVmJob() {
@@ -38,6 +42,24 @@ public class RightSizeBatchConfig {
                 .reader(recommendVmListItemReader)
                 .processor(recommendVmItemProcessor)
                 .writer(recommendVmListItemWriter)
+                .allowStartIfComplete(true)
+                .build();
+    }
+
+    @Bean(name = RightSizeBatchConstants.ANOMALY_JOB)
+    public Job anomalyVmJob() {
+        return new JobBuilder(RightSizeBatchConstants.ANOMALY_JOB, jobRepository)
+                .start(anomalyVmStep())
+                .build();
+    }
+
+    @Bean(name = RightSizeBatchConstants.ANOMALY_STEP)
+    public Step anomalyVmStep() {
+        return new StepBuilder(RightSizeBatchConstants.ANOMALY_STEP, jobRepository)
+                .<AzureCostVmDailyDto, AnomalyDto>chunk(1, transactionManager)
+                .reader(anomalyVmListItemReader)
+                .processor(anomalyVmItemProcessor)
+                .writer(anomalyVmItemWriter)
                 .allowStartIfComplete(true)
                 .build();
     }
