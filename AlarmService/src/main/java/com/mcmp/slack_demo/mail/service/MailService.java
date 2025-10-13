@@ -121,7 +121,7 @@ public class MailService {
             e.printStackTrace();
         }
 
-        commonService.insertAlarmHistory(mailFormModel);
+//        commonService.insertAlarmHistory(mailFormModel);
 
     }
 
