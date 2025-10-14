@@ -1,10 +1,10 @@
 openapi: "3.1.0"
 info:
-  title: "mc_cost_optimizer API"
-  description: "mc_cost_optimizer API"
+  title: "Cost Azure Collector API"
+  description: "Cost Azure Collector API"
   version: "1.0.0"
 servers:
-  - url: "https://localhost:8093"
+  - url: "http://localhost:8093"
 paths:
   /api/batch/azure/service:
     get:
@@ -20,7 +20,7 @@ paths:
   /api/batch/azure/vm:
     get:
       summary: "Azure VM 들의 전날의 이용 금액을 수집한다."
-      operationId: "batchAzureService"
+      operationId: "batchAzureVm"
       responses:
         "200":
           description: "OK"

@@ -1,10 +1,10 @@
 openapi: "3.1.0"
 info:
-  title: "mc_cost_optimizer API"
-  description: "mc_cost_optimizer API"
+  title: "Cost NCP Collector API"
+  description: "Cost NCP Collector API"
   version: "1.0.0"
 servers:
-  - url: "https://localhost:8094"
+  - url: "http://localhost:8094"
 paths:
   /api/batch/ncp/service:
     get:
