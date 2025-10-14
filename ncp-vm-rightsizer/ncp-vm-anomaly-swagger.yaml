@@ -1,15 +1,15 @@
 openapi: "3.1.0"
 info:
-  title: "Azure VM Anomaly API"
-  description: "Azure VM Anomaly API"
+  title: "NCP VM Anomaly API"
+  description: "NCP VM Anomaly API"
   version: "1.0.0"
 servers:
-  - url: "http://localhost:8092"
+  - url: "http://localhost:8095"
 paths:
-  /api/batch/azure/anomaly:
+  /api/batch/ncp/anomaly:
     get:
       summary: "비용 수집된 전체 VM의 이상비용을 탐지 배치를 수행하는 API, 메일 발송까지 기능까지 연동."
-      operationId: "anomalyAzureVm"
+      operationId: "anomalyNcpVm"
       responses:
         "200":
           description: "OK"
@@ -17,7 +17,7 @@ paths:
             'application/json;charset=UTF-8':
               schema:
                 type: "string"
-  /api/azure/anomaly/test:
+  /api/ncp/anomaly/test:
     get:
       summary: "비용 수집된 전체 VM의 이상비용을 탐지를 조회하는 테스트용 API."
       operationId: "test2"

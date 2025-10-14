@@ -25,17 +25,19 @@
 
     <select id="findVmListCurrentMonth" resultMap="NcpCostVmMonthResultMap">
         SELECT DISTINCT
-            *
-        FROM ncp_cost_vm_month
+            t.*
+        FROM ncp_cost_vm_month t
         WHERE demand_month = DATE_FORMAT(CURDATE(), '%Y%m')
+        GROUP BY instance_no
         ORDER BY instance_no;
     </select>
 
     <select id="selectVmListByMonth" resultMap="NcpCostVmMonthResultMap">
         SELECT DISTINCT
-            *
-        FROM ncp_cost_vm_month
+            t.*
+        FROM ncp_cost_vm_month t
         WHERE demand_month = #{demandMonth}
+        GROUP BY instance_no
         ORDER BY instance_no
     </select>
 
