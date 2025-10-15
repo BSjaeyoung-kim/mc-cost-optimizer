@@ -26,38 +26,9 @@ public class AnomalyCostVmServiceImpl implements AnomalyCostVmService {
         List<NcpCostVmMonthDto> ncpCostVmMonthDtoList = ncpCostVmMonthMapper.findVmListCurrentMonth();
 
         log.info("Anomaly VM List Test!!!!");
-        this.getAnomalyCostVm("KR");
         for (NcpCostVmMonthDto ncpCostVmMonthDto : ncpCostVmMonthDtoList) {
             this.getAnomalyCostByVmId(ncpCostVmMonthDto);
         }
-    }
-
-
-    @Override
-    public List<AnomalyDto> getAnomalyCostVm(String region) {
-        List<NcpVmMonthlyAvgCostDto> ncpVmMonthlyAvgCostDtoList = ncpCostVmDailyMapper.getAvgCostByRegion(region);
-        List<AnomalyDto> anomalyDtoList = new ArrayList<>();
-        LocalDateTime collectDate = LocalDateTime.now();
-        for (NcpVmMonthlyAvgCostDto dto : ncpVmMonthlyAvgCostDtoList) {
-            double percentagePoint = getPercentagePoint(dto);
-
-            AnomalyDto anomalyDto = AnomalyDto.builder()
-                    .collectDt(collectDate)
-                    .vmId(dto.getInstanceNo())
-                    .productCd("Server(VPC)(" + dto.getInstanceNo() + ")")
-                    .abnormalRating(getAnomalyRating(percentagePoint))
-                    .percentagePoint(percentagePoint)
-                    .standardCost(dto.getLatestCost())
-                    .subjectCost(dto.getAvgCost())
-                    .projectCd("projectCd")
-                    .workspaceCd("workspaceCd")
-                    .cspType("NCP")
-                    .build();
-            anomalyDtoList.add(anomalyDto);
-
-            log.info("[AnomalyCost] List AnomalyDto={}", anomalyDto);
-        }
-        return anomalyDtoList;
     }
 
     @Override

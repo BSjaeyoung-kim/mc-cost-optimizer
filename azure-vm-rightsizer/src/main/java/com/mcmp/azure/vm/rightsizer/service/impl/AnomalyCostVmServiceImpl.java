@@ -11,7 +11,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -28,37 +27,9 @@ public class AnomalyCostVmServiceImpl implements AnomalyCostVmService {
         List<AzureCostVmDailyDto> azureCostVmDailyDtoList = azureCostVmDailyMapper.findLatestBySubscriptionId(azureCredentialProperties.getSubscriptionId());
 
         log.info("Cost VM List Test!!!!");
-        this.getAnomalyCostVm();
         for (AzureCostVmDailyDto azureCostVmDailyDto : azureCostVmDailyDtoList) {
             this.getAnomalyCostByVmId(azureCostVmDailyDto);
         }
-    }
-
-    @Override
-    public List<AnomalyDto> getAnomalyCostVm() {
-        List<VmMonthlyAvgCostDto> vmMonthlyAvgCostDtoList = vmCostAnalysisMapper.selectMonthlyAvgCostAllVm();
-        List<AnomalyDto> anomalyDtoList = new ArrayList<>();
-        LocalDateTime collectDate = LocalDateTime.now();
-        for (VmMonthlyAvgCostDto dto : vmMonthlyAvgCostDtoList) {
-            double percentagePoint = getPercentagePoint(dto);
-
-            AnomalyDto anomalyDto = AnomalyDto.builder()
-                    .collectDt(collectDate)
-                    .vmId(dto.getVmId())
-                    .productCd("Virtual Machine(" + dto.getVmId() + ")")
-                    .abnormalRating(getAnomalyRating(percentagePoint))
-                    .percentagePoint(percentagePoint)
-                    .standardCost(dto.getLatestCost())
-                    .subjectCost(dto.getAvgCost())
-                    .projectCd("projectCd")
-                    .workspaceCd("workspaceCd")
-                    .cspType("AZURE")
-                    .build();
-            anomalyDtoList.add(anomalyDto);
-
-            log.info("[AnomalyCost] List AnomalyDto={}", anomalyDto);
-        }
-        return anomalyDtoList;
     }
 
     @Override

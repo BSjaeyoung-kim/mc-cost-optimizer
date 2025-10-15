@@ -2,12 +2,15 @@ package com.mcmp.ncp.vm.rightsizer.service;
 
 import com.mcmp.ncp.vm.rightsizer.dto.AnomalyDto;
 import com.mcmp.ncp.vm.rightsizer.dto.NcpCostVmMonthDto;
-import java.util.List;
 
 public interface AnomalyCostVmService {
 
-    List<AnomalyDto> getAnomalyCostVm(String region);
-
+    /**
+     * 일일 VM을 통해 이상비용을 탐지한다.
+     *
+     * @param ncpCostVmMonthDto InstanceNo, RegionCode MemberNo 담은 dto.
+     * @return 이상 비용 DTO.
+     */
     AnomalyDto getAnomalyCostByVmId(NcpCostVmMonthDto ncpCostVmMonthDto);
 
 }

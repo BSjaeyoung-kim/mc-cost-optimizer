@@ -105,6 +105,16 @@ public class MailService {
                             "추천 Plan : " + mailFormModel.getPlan() + "<br>" +
                             mailFormModel.getNote();
                     break;
+                case "Budget":
+                    mailFormModel.setSubject("[MCMP-Notice] Cost Alarm occurred : Budget Adjustment");
+                    mailMessage = "MCMP Cost에서 예산 비용 알람이 발생했습니다." +
+                            "<br><br>" +
+                            "CSP : " + mailFormModel.getCsp_type() + "<br>" +
+                            "계정 ID : " + mailFormModel.getAccount_id() + "<br>" +
+                            "리소스 Type : " + mailFormModel.getResource_type() + "<br>" +
+                            "추천 Plan : " + mailFormModel.getPlan() + "<br>" +
+                            mailFormModel.getNote();
+                    break;
             }
 
             MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMessage, true, "UTF-8");

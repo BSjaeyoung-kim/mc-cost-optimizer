@@ -38,3 +38,15 @@ ncp:
   credential:
     iam-access-key: ${IAM_ACCESS_KEY:iamAccessKey}
     iam-secret-key: ${IAM_SECRET_KEY:iamSecretKey}
+
+costopti:
+  alarmservice:
+    url: ${ALARM_SERVICE:alarm_service}
+  assetcollector:
+    url: http://localhost:8091
+  costcollector:
+    url: http://localhost:8081
+  costprocessor:
+    url: http://localhost:8082
+  costselector:
+    url: http://localhost:8083
