@@ -30,6 +30,9 @@ spring:
       mode: NEVER # ALWAYS 와 설정 와따가따하면서...
       schema-locations: classpath:org/springframework/batch/core/schema-mariadb.sql
 
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+
 logging:
   level:
     com.mcmp.cost.azure.collector.service: debug
@@ -40,3 +43,15 @@ azure:
     client-id: ${CLIENT_ID:clientId}
     client-secret: ${CLIENT_SECRET:clientSecret}
     subscription-id: ${SUBSCRIPTION_ID:subscriptionId}
+
+costopti:
+  alarmservice:
+    url: ${ALARM_SERVICE:alarm_service}
+  assetcollector:
+    url: http://localhost:8091
+  costcollector:
+    url: http://localhost:8081
+  costprocessor:
+    url: http://localhost:8082
+  costselector:
+    url: http://localhost:8083
