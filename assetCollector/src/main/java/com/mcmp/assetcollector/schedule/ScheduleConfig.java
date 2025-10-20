@@ -1,6 +1,11 @@
 package com.mcmp.assetcollector.schedule;
 
-import org.quartz.*;
+import com.mcmp.assetcollector.batch.AssetBatchConstants;
+import org.quartz.CronScheduleBuilder;
+import org.quartz.JobBuilder;
+import org.quartz.JobDetail;
+import org.quartz.Trigger;
+import org.quartz.TriggerBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,7 +20,7 @@ public class ScheduleConfig {
     public JobDetail assetJobDetail() {
         return JobBuilder.newJob().ofType(AssetCltJob.class)
                 .storeDurably()
-                .withIdentity("assetCollectJob", "assetCollect")
+                .withIdentity(AssetBatchConstants.ASSET_COLLECT_JOB, "assetCollect")
                 .withDescription("Execute Spring Batch AssetCollect Batch Job with Quartz")
                 .build();
     }

@@ -17,11 +17,11 @@
          LIMIT #{_skiprows}, #{_pagesize}
     </select>
 
-    <insert id="insertRSRCComputeMetric" parameterType="com.mcmp.assetcollector.model.batch.RSRCAssetComputeMetricModel">
+    <insert id="insertAssetComputeMetric" parameterType="com.mcmp.assetcollector.dto.AssetComputeMetricDto">
         INSERT INTO asset_compute_metric(csp_type, csp_account, csp_instanceid, collect_dt, metric_type, metric_amount, resource_status, resource_spot_yn)
         VALUES (#{cspType}
                , #{cspAccount}
-               , #{cspInstanceid}
+               , #{cspInstanceId}
                , #{collectDt}
                , #{metricType}
                , #{metricAmount}
