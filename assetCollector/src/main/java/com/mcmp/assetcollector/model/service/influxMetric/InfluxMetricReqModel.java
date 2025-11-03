@@ -18,12 +18,11 @@ public class InfluxMetricReqModel {
     private List<InfluxMetricCondition> conditions;
 
     public InfluxMetricReqModel defaultValue(){
-        this.influx_db_seq = 1;
         this.measurement = "cpu";
         this.range = "1h";
-        this.group_time = "1h";
-        this.group_by = Arrays.asList("uuid", "cpu");
-        this.limit = 10;
+        this.group_time = "5m";
+        this.group_by = Arrays.asList("vm_id");
+        this.limit = 0;
 
         return this;
     }
