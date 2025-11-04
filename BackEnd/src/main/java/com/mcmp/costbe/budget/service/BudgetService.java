@@ -26,8 +26,12 @@ public class BudgetService {
         return budgetDao.selectDistinctYears();
     }
 
-    public List<BudgetResModel> getBudgetsByYear(int year) {
-        List<BudgetItemModel> list = budgetDao.selectBudgetByYear(year);
+    public List<BudgetResModel> getBudgetsByYear(int year, String projectId) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("year", year);
+        params.put("projectId", projectId);
+
+        List<BudgetItemModel> list = budgetDao.selectBudgetByYear(params);
         List<BudgetResModel> result = new ArrayList<>();
 
         for (BudgetItemModel item : list) {
@@ -68,9 +72,13 @@ public class BudgetService {
     /**
      * 연도별 예산 vs 실제 사용 비교 조회
      */
-    public BudgetComparisonResModel getBudgetComparison(int year) {
+    public BudgetComparisonResModel getBudgetComparison(int year, String projectId) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("year", year);
+        params.put("projectId", projectId);
+
         // 1. 예산 데이터 조회
-        List<BudgetItemModel> budgetList = budgetDao.selectBudgetByYear(year);
+        List<BudgetItemModel> budgetList = budgetDao.selectBudgetByYear(params);
         Map<String, Map<String, Double>> budgetMap = budgetList.stream()
                 .collect(Collectors.groupingBy(
                         item -> String.format("%04d%02d", item.getYear(), item.getMonth()),
@@ -81,7 +89,7 @@ public class BudgetService {
                 ));
 
         // 2. 실제 사용 데이터 조회
-        List<ActualUsageItemModel> actualList = budgetDao.selectActualUsageByYear(year);
+        List<ActualUsageItemModel> actualList = budgetDao.selectActualUsageByYear(params);
         Map<String, Map<String, Double>> actualMap = actualList.stream()
                 .collect(Collectors.groupingBy(
                         ActualUsageItemModel::getYearMonth,
