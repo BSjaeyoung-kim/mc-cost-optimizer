@@ -8,7 +8,6 @@ import java.util.Objects;
 
 @Data
 public class InfluxMetricReqModel {
-    private int influx_db_seq;
     private String measurement;
     private String range;
     private String group_time;
@@ -20,7 +19,7 @@ public class InfluxMetricReqModel {
     public InfluxMetricReqModel defaultValue(){
         this.measurement = "cpu";
         this.range = "1h";
-        this.group_time = "5m";
+        this.group_time = "12m";
         this.group_by = Arrays.asList("vm_id");
         this.limit = 0;
 
