@@ -47,8 +47,8 @@ azure:
 azure-schedule:
 #  service-batch-cron: ${AZURE_SERVICE_BATCH_CRON_SCHEDULE:0 0 0 * * ?}
 #  vm-batch-cron: ${AZURE_VM_BATCH_CRON_SCHEDULE:0 30 0 * * ?}
-  service-batch-cron: ${AZURE_SERVICE_BATCH_CRON_SCHEDULE:0 0/1 * * * ?}
-  vm-batch-cron: ${AZURE_VM_BATCH_CRON_SCHEDULE:0 0/1 * * * ?}
+  service-batch-cron: ${AZURE_SERVICE_BATCH_CRON_SCHEDULE:0 0 0 * * ?}
+  vm-batch-cron: ${AZURE_VM_BATCH_CRON_SCHEDULE:0 30 0 * * ?}
 
 costopti:
   alarmservice:
