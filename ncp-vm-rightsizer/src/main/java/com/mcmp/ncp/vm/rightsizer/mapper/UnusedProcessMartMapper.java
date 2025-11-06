@@ -1,0 +1,27 @@
+package com.mcmp.ncp.vm.rightsizer.mapper;
+
+import com.mcmp.ncp.vm.rightsizer.dto.UnusedProcessMartDto;
+import com.mcmp.ncp.vm.rightsizer.dto.UnusedDto;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+
+@Mapper
+public interface UnusedProcessMartMapper {
+
+    /**
+     * unused_process_mart에 메트릭 평균 데이터 저장
+     * (Processor에서 호출)
+     *
+     * @param dto 저장할 메트릭 데이터
+     */
+    void insertUnusedProcessMart(UnusedProcessMartDto dto);
+
+    /**
+     * 특정 Instance의 14일간 메트릭 데이터 분석
+     * (Processor에서 호출)
+     *
+     * @param resourceId Instance No
+     * @return 14일간 평균, 최대값, 데이터 개수
+     */
+    UnusedDto select14DaysMetricStats(@Param("resourceId") String resourceId);
+}

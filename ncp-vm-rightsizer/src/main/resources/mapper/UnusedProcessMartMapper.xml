@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.mcmp.ncp.vm.rightsizer.mapper.UnusedProcessMartMapper">
+
+    <!-- ResultMap 정의 -->
+    <resultMap id="unused14DaysStatsResultMap" type="com.mcmp.ncp.vm.rightsizer.dto.UnusedDto">
+        <result property="avgCpu14Days" column="avg_cpu_14days"/>
+        <result property="maxCpu14Days" column="max_cpu_14days"/>
+        <result property="dayCount" column="day_count"/>
+    </resultMap>
+
+    <!-- unused_daily_mart에 메트릭 평균 데이터 저장 -->
+    <insert id="insertUnusedProcessMart">
+        INSERT INTO unused_daily_mart (
+            create_dt,
+            csp_type,
+            resource_id,
+            collect_dt,
+            metric_type,
+            metric_avg_amount
+        ) VALUES (
+            #{createDt},
+            'NCP',
+            #{resourceId},
+            #{collectDt},
+            #{metricType},
+            #{metricAvgAmount}
+        )
+        ON DUPLICATE KEY UPDATE
+            create_dt = #{createDt},
+            metric_avg_amount = #{metricAvgAmount}
+    </insert>
+
+    <!-- 특정 Instance의 14일간 메트릭 데이터 분석 -->
+    <select id="select14DaysMetricStats" resultMap="unused14DaysStatsResultMap">
+        SELECT
+            AVG(metric_avg_amount) as avg_cpu_14days,
+            MAX(metric_avg_amount) as max_cpu_14days,
+            COUNT(DISTINCT collect_dt) as day_count
+        FROM unused_daily_mart
+        WHERE csp_type = 'NCP'
+          AND resource_id = #{resourceId}
+          AND metric_type = 'cpu'
+          AND collect_dt >= DATE(DATE_SUB(NOW(), INTERVAL 14 DAY))
+          AND collect_dt <![CDATA[ <= ]]> DATE(DATE_SUB(NOW(), INTERVAL 1 DAY))
+    </select>
+
+</mapper>
