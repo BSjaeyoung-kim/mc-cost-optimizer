@@ -30,8 +30,16 @@ public class AnomalyVmListItemWriter implements ItemWriter<AnomalyDto> {
     public void write(Chunk<? extends AnomalyDto> chunk) throws Exception {
         for (AnomalyDto anomalyDto : chunk) {
             if (anomalyDto.getAbnormalRating() == null) {
-                return;
+                continue;  // 등급이 없는 경우 skip하고 다음 항목으로
             }
+
+            // 등급별 메시지 생성
+            String note = String.format(
+                    "VM(%s)의 비용이 지난달 평균(%.2f원) 대비 %.1f%% 증가했습니다.",
+                    anomalyDto.getVmId(),
+                    anomalyDto.getSubjectCost(),
+                    anomalyDto.getPercentagePoint()
+            );
 
             AlarmHistoryDto alarmHistoryDto = AlarmHistoryDto.builder()
                     .alarmType(List.of("mail"))
@@ -44,17 +52,27 @@ public class AnomalyVmListItemWriter implements ItemWriter<AnomalyDto> {
                     // Caution(주의), Warning(경고), Critical(긴급)
                     .urgency(anomalyDto.getAbnormalRating())
                     .plan(anomalyDto.getAbnormalRating())
-                    .note("")
+                    .note(note)
                     .occureDate(new Timestamp(System.currentTimeMillis()))
                     .cspType("AZURE")
-                    .projectCd("ns01")
+                    .projectCd(anomalyDto.getProjectCd())  // AnomalyDto에서 가져온 값 사용 (servicegroup_meta 조인)
                     .build();
-            alarmServiceClient.sendOptiAlarmMail(alarmHistoryDto);
+
+            // 알림 발송 (알림 서비스 URL 미설정 시 skip)
+            try {
+                alarmServiceClient.sendOptiAlarmMail(alarmHistoryDto);
+                log.info("Sent alarm notification for VM: {}", anomalyDto.getVmId());
+            } catch (Exception e) {
+                log.warn("Failed to send alarm notification for VM: {} - {}", anomalyDto.getVmId(), e.getMessage());
+            }
+
             // AlarmService에서 현재 DB history가 insert 되지 않아 넣은 코드.
             alarmHistoryMapper.insertAlarmHistory(alarmHistoryDto);
             // 이상비용 DB insert
             dailyAbnormalByProductMapper.insertDailyAbnormalByProduct(anomalyDto);
-            log.info("Saved {} Azure Abnormal Alarm History to database", anomalyDto.getProjectCd());
+            log.info("Saved {} Azure Abnormal Alarm History to database (project: {}, rating: {}, percentage: {}%)",
+                    anomalyDto.getVmId(), anomalyDto.getProjectCd(), anomalyDto.getAbnormalRating(),
+                    String.format("%.1f", anomalyDto.getPercentagePoint()));
         }
     }
 }

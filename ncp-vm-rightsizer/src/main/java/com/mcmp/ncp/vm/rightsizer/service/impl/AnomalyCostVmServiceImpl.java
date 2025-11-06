@@ -48,8 +48,8 @@ public class AnomalyCostVmServiceImpl implements AnomalyCostVmService {
                 .percentagePoint(percentagePoint)
                 .standardCost(ncpVmMonthlyAvgCostDto.getLatestCost())
                 .subjectCost(ncpVmMonthlyAvgCostDto.getAvgCost())
-                .projectCd("projectCd")
-                .workspaceCd("workspaceCd")
+                .projectCd(ncpVmMonthlyAvgCostDto.getProjectCd())  // servicegroup_meta에서 조회한 값 사용
+                .workspaceCd(ncpVmMonthlyAvgCostDto.getWorkspaceCd())  // servicegroup_meta에서 조회한 값 사용
                 .cspType("NCP")
                 .build();
 

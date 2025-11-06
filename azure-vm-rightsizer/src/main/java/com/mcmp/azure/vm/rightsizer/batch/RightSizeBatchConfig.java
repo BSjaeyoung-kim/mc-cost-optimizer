@@ -3,6 +3,7 @@ package com.mcmp.azure.vm.rightsizer.batch;
 import com.mcmp.azure.vm.rightsizer.dto.AnomalyDto;
 import com.mcmp.azure.vm.rightsizer.dto.AzureCostVmDailyDto;
 import com.mcmp.azure.vm.rightsizer.dto.RecommendVmTypeDto;
+import com.mcmp.azure.vm.rightsizer.dto.UnusedVmDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
@@ -27,6 +28,9 @@ public class RightSizeBatchConfig {
     private final AnomalyVmListItemReader anomalyVmListItemReader;
     private final AnomalyVmListItemProcessor anomalyVmItemProcessor;
     private final AnomalyVmListItemWriter anomalyVmItemWriter;
+    private final UnusedVmListItemReader unusedVmListItemReader;
+    private final UnusedVmMetricProcessor unusedVmMetricProcessor;
+    private final UnusedVmListItemWriter unusedVmListItemWriter;
 
     @Bean(name = RightSizeBatchConstants.SIZE_UP_JOB)
     public Job recommendVmJob() {
@@ -60,6 +64,24 @@ public class RightSizeBatchConfig {
                 .reader(anomalyVmListItemReader)
                 .processor(anomalyVmItemProcessor)
                 .writer(anomalyVmItemWriter)
+                .allowStartIfComplete(true)
+                .build();
+    }
+
+    @Bean(name = RightSizeBatchConstants.UNUSED_JOB)
+    public Job unusedResourceJob() {
+        return new JobBuilder(RightSizeBatchConstants.UNUSED_JOB, jobRepository)
+                .start(unusedResourceStep())
+                .build();
+    }
+
+    @Bean(name = RightSizeBatchConstants.UNUSED_STEP)
+    public Step unusedResourceStep() {
+        return new StepBuilder(RightSizeBatchConstants.UNUSED_STEP, jobRepository)
+                .<UnusedVmDto, UnusedVmDto>chunk(10, transactionManager)
+                .reader(unusedVmListItemReader)
+                .processor(unusedVmMetricProcessor)
+                .writer(unusedVmListItemWriter)
                 .allowStartIfComplete(true)
                 .build();
     }

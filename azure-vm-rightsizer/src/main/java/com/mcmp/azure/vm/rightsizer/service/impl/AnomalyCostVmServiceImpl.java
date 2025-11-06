@@ -45,8 +45,8 @@ public class AnomalyCostVmServiceImpl implements AnomalyCostVmService {
                 .percentagePoint(percentagePoint)
                 .standardCost(vmMonthlyAvgCostDto.getLatestCost())
                 .subjectCost(vmMonthlyAvgCostDto.getAvgCost())
-                .projectCd("projectCd")
-                .workspaceCd("workspaceCd")
+                .projectCd(vmMonthlyAvgCostDto.getProjectCd())
+                .workspaceCd(vmMonthlyAvgCostDto.getWorkspaceCd())
                 .cspType("AZURE")
                 .build();
 

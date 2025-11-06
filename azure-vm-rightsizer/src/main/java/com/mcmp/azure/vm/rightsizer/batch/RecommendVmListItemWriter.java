@@ -4,6 +4,7 @@ import com.mcmp.azure.vm.rightsizer.client.AlarmServiceClient;
 import com.mcmp.azure.vm.rightsizer.dto.AlarmHistoryDto;
 import com.mcmp.azure.vm.rightsizer.dto.RecommendVmTypeDto;
 import com.mcmp.azure.vm.rightsizer.mapper.AlarmHistoryMapper;
+import com.mcmp.azure.vm.rightsizer.mapper.ServiceGroupMetaMapper;
 import com.mcmp.azure.vm.rightsizer.properties.AzureCredentialProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,6 +14,7 @@ import org.springframework.batch.item.ItemWriter;
 import org.springframework.stereotype.Component;
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @StepScope
@@ -23,12 +25,22 @@ public class RecommendVmListItemWriter implements ItemWriter<RecommendVmTypeDto>
     private final AzureCredentialProperties azureCredentialProperties;
     private final AlarmHistoryMapper alarmHistoryMapper;
     private final AlarmServiceClient alarmServiceClient;
+    private final ServiceGroupMetaMapper serviceGroupMetaMapper;
 
     @Override
     public void write(Chunk<? extends RecommendVmTypeDto> chunk) throws Exception {
         for (RecommendVmTypeDto recommendVmTypeDto : chunk) {
-            // AlarmGuideGrid.vue 파일을 보고 TYPE을 임시로 작성한다.
+            // servicegroup_meta에서 projectCd, workspaceCd 조회
+            Map<String, String> meta = serviceGroupMetaMapper.selectProjectAndWorkspaceByVmId(
+                    recommendVmTypeDto.getVmId(),
+                    azureCredentialProperties.getSubscriptionId()
+            );
 
+            String projectCd = (meta != null && meta.get("projectCd") != null)
+                    ? meta.get("projectCd")
+                    : "default";
+
+            // AlarmGuideGrid.vue 파일을 보고 TYPE을 임시로 작성한다.
             AlarmHistoryDto alarmHistoryDto = AlarmHistoryDto.builder()
                     .alarmType(List.of("mail"))
                     // Abnormal (비정상), Resize(사이즈 변경), Unused(미사용)
@@ -46,12 +58,13 @@ public class RecommendVmListItemWriter implements ItemWriter<RecommendVmTypeDto>
                             + recommendVmTypeDto.getRecommendType() + "Sizing 으로 변경하는 것을 추천드립니다.")
                     .occureDate(new Timestamp(System.currentTimeMillis()))
                     .cspType("AZURE")
-                    .projectCd("ns01")
+                    .projectCd(projectCd)  // servicegroup_meta에서 조회한 값 사용
                     .build();
             alarmServiceClient.sendOptiAlarmMail(alarmHistoryDto);
             // AlarmService에서 현재 DB history가 insert 되지 않아 넣은 코드.
             alarmHistoryMapper.insertAlarmHistory(alarmHistoryDto);
-            log.info("Saved {} Azure Vm Size Up Alarm History to database", recommendVmTypeDto.getVmId());
+            log.info("Saved {} Azure Vm Size Up Alarm History to database (projectCd: {})",
+                    recommendVmTypeDto.getVmId(), projectCd);
         }
     }
 }

@@ -10,8 +10,8 @@ import org.springframework.scheduling.quartz.QuartzJobBean;
 import org.springframework.stereotype.Component;
 
 /**
- * Azure VM Rightsizer Batch 스케줄러
- * 매일 한국시간 09:30 (UTC 00:30)에 실행되어 VM rightsizing 분석을 수행합니다.
+ * Azure VM Rightsizer & Unused Resource Detection Batch 스케줄러
+ * 매일 한국시간 09:30 (UTC 00:30)에 실행되어 VM rightsizing 분석 및 Unused 자원 탐지를 수행합니다.
  */
 @Component
 @Slf4j
@@ -35,6 +35,10 @@ public class AzureRightsizerScheduleJob extends QuartzJobBean {
             // Anomaly VM 배치 실행
             log.info("Executing Anomaly VM Batch...");
             batchExecutorService.executeBatch(RightSizeType.AZURE_ANOMALY_VM);
+
+            // Unused Resource Detection 배치 실행
+            log.info("Executing Unused Resource Detection Batch...");
+            batchExecutorService.executeBatch(RightSizeType.AZURE_UNUSED_VM);
 
             log.info("Azure VM Rightsizer Batch Job completed successfully");
         } catch (Exception e) {
