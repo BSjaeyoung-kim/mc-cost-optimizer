@@ -2,6 +2,7 @@ package com.mcmp.ncp.vm.rightsizer.batch;
 
 import com.mcmp.ncp.vm.rightsizer.dto.AnomalyDto;
 import com.mcmp.ncp.vm.rightsizer.dto.NcpCostVmMonthDto;
+import com.mcmp.ncp.vm.rightsizer.dto.RecommendCandidateDto;
 import com.mcmp.ncp.vm.rightsizer.dto.RecommendVmTypeDto;
 import com.mcmp.ncp.vm.rightsizer.dto.UnusedDto;
 import lombok.RequiredArgsConstructor;
@@ -42,7 +43,7 @@ public class RightSizeBatchConfig {
     @Bean(name = RightSizeBatchConstants.SIZE_DOWN_STEP)
     public Step recommendVmStep() {
         return new StepBuilder(RightSizeBatchConstants.SIZE_DOWN_STEP, jobRepository)
-                .<NcpCostVmMonthDto, RecommendVmTypeDto>chunk(1, transactionManager)
+                .<RecommendCandidateDto, RecommendVmTypeDto>chunk(1, transactionManager)
                 .reader(recommendVmListItemReader)
                 .processor(recommendVmItemProcessor)
                 .writer(recommendVmListItemWriter)

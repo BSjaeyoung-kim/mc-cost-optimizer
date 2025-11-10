@@ -37,6 +37,8 @@ public class RecommendVmListItemWriter implements ItemWriter<RecommendVmTypeDto>
                     ? meta.get("projectCd")
                     : "default";
 
+            String plan = recommendVmTypeDto.getPlan(); // "UP" or "DOWN"
+
             // AlarmGuideGrid.vue 파일을 보고 TYPE을 임시로 작성한다.
             AlarmHistoryDto alarmHistoryDto = AlarmHistoryDto.builder()
                     .alarmType(List.of("mail"))
@@ -49,18 +51,41 @@ public class RecommendVmListItemWriter implements ItemWriter<RecommendVmTypeDto>
                     // Caution(주의), Warning(경고), Critical(긴급)
                     .urgency("Caution")
                     // Up(상향), Down(하향), Unused(미사용), Modernize(최신화)
-                    .plan("Down")
-                    .note("인스턴스(" + recommendVmTypeDto.getVmId() + ")를 기존 타입 : "
-                            + recommendVmTypeDto.getCurrentType() + "에서 "
-                            + recommendVmTypeDto.getRecommendType() + "Sizing 으로 변경하는 것을 추천드립니다.")
+                    .plan(plan)
+                    .note(String.format(
+                        "Recommend %s sizing for instance (%s) from current type %s to %s.",
+                        plan,
+                        recommendVmTypeDto.getVmId(),
+                        recommendVmTypeDto.getCurrentType(),
+                        recommendVmTypeDto.getRecommendType()
+                    ))
                     .occureDate(new Timestamp(System.currentTimeMillis()))
                     .cspType("NCP")
                     .projectCd(projectCd)  // servicegroup_meta에서 조회한 값 사용
                     .build();
-            alarmServiceClient.sendOptiAlarmMail(alarmHistoryDto);
+            // 메일 발송 시도
+            try {
+                alarmServiceClient.sendOptiAlarmMail(alarmHistoryDto);
+                log.info("Mail sent successfully for vmId: {}, plan: {}, urgency: {}",
+                    recommendVmTypeDto.getVmId(), plan, alarmHistoryDto.getUrgency());
+            } catch (Exception e) {
+                log.error("Failed to send mail for vmId: {}, plan: {}, error: {}, stackTrace: {}",
+                    recommendVmTypeDto.getVmId(),
+                    plan,
+                    e.getMessage(),
+                    e.getClass().getName());
+                log.debug("Mail send error details", e);
+            }
+
+            // DB 저장 (메일 발송 실패와 무관하게 진행)
             alarmHistoryMapper.insertAlarmHistory(alarmHistoryDto);
-            log.info("Saved {} Ncp Vm Size Down Alarm History to database (projectCd: {})",
-                    recommendVmTypeDto.getVmId(), projectCd);
+            log.info("Saved {} Ncp Vm Size {} Alarm History to database (projectCd: {}, resourceId: {}, currentType: {} -> recommendType: {})",
+                    recommendVmTypeDto.getVmId(),
+                    plan,
+                    projectCd,
+                    recommendVmTypeDto.getVmId(),
+                    recommendVmTypeDto.getCurrentType(),
+                    recommendVmTypeDto.getRecommendType());
         }
     }
 }

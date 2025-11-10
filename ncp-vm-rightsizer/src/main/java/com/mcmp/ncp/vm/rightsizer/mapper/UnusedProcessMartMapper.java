@@ -1,9 +1,12 @@
 package com.mcmp.ncp.vm.rightsizer.mapper;
 
+import com.mcmp.ncp.vm.rightsizer.dto.RecommendCandidateDto;
 import com.mcmp.ncp.vm.rightsizer.dto.UnusedProcessMartDto;
 import com.mcmp.ncp.vm.rightsizer.dto.UnusedDto;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+
+import java.util.List;
 
 @Mapper
 public interface UnusedProcessMartMapper {
@@ -24,4 +27,12 @@ public interface UnusedProcessMartMapper {
      * @return 14일간 평균, 최대값, 데이터 개수
      */
     UnusedDto select14DaysMetricStats(@Param("resourceId") String resourceId);
+
+    /**
+     * 4일간 메트릭 데이터 기반 SizeUp/Down 추천 대상 조회
+     * (Reader에서 호출)
+     *
+     * @return SizeUp/Down 추천 대상 리스트
+     */
+    List<RecommendCandidateDto> selectRecommendCandidates();
 }

@@ -40,6 +40,8 @@ public class RecommendVmListItemWriter implements ItemWriter<RecommendVmTypeDto>
                     ? meta.get("projectCd")
                     : "default";
 
+            String plan = recommendVmTypeDto.getPlan(); // "Up" or "Down"
+
             // AlarmGuideGrid.vue 파일을 보고 TYPE을 임시로 작성한다.
             AlarmHistoryDto alarmHistoryDto = AlarmHistoryDto.builder()
                     .alarmType(List.of("mail"))
@@ -50,21 +52,35 @@ public class RecommendVmListItemWriter implements ItemWriter<RecommendVmTypeDto>
                     .occureDt(new Timestamp(System.currentTimeMillis()))
                     .accountId(azureCredentialProperties.getSubscriptionId())
                     // Caution(주의), Warning(경고), Critical(긴급)
-                    .urgency("Caution")
+                    .urgency("Up".equals(plan) ? "Warning" : "Caution")
                     // Up(상향), Down(하향), Unused(미사용), Modernize(최신화)
-                    .plan("Up")
-                    .note("인스턴스(" + recommendVmTypeDto.getVmId() + ")를 기존 타입 : "
-                            + recommendVmTypeDto.getCurrentType() + "에서 "
-                            + recommendVmTypeDto.getRecommendType() + "Sizing 으로 변경하는 것을 추천드립니다.")
+                    .plan(plan)
+                    .note(String.format(
+                        "Recommend %s sizing for instance (%s) from current type %s to %s.",
+                        plan,
+                        recommendVmTypeDto.getVmId(),
+                        recommendVmTypeDto.getCurrentType(),
+                        recommendVmTypeDto.getRecommendType()
+                    ))
                     .occureDate(new Timestamp(System.currentTimeMillis()))
                     .cspType("AZURE")
                     .projectCd(projectCd)  // servicegroup_meta에서 조회한 값 사용
                     .build();
-            alarmServiceClient.sendOptiAlarmMail(alarmHistoryDto);
+
+            // 메일 발송 (에러 처리)
+            try {
+                alarmServiceClient.sendOptiAlarmMail(alarmHistoryDto);
+                log.info("Mail sent successfully for vmId: {}, plan: {}",
+                    recommendVmTypeDto.getVmId(), plan);
+            } catch (Exception e) {
+                log.error("Failed to send mail for vmId: {}, plan: {}, error: {}",
+                    recommendVmTypeDto.getVmId(), plan, e.getMessage());
+            }
+
             // AlarmService에서 현재 DB history가 insert 되지 않아 넣은 코드.
-            alarmHistoryMapper.insertAlarmHistory(alarmHistoryDto);
-            log.info("Saved {} Azure Vm Size Up Alarm History to database (projectCd: {})",
-                    recommendVmTypeDto.getVmId(), projectCd);
+//            alarmHistoryMapper.insertAlarmHistory(alarmHistoryDto);
+            log.info("Saved {} Azure Vm Size {} Alarm History to database (projectCd: {})",
+                    recommendVmTypeDto.getVmId(), plan, projectCd);
         }
     }
 }

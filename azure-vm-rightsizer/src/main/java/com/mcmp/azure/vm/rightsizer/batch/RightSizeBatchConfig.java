@@ -2,6 +2,7 @@ package com.mcmp.azure.vm.rightsizer.batch;
 
 import com.mcmp.azure.vm.rightsizer.dto.AnomalyDto;
 import com.mcmp.azure.vm.rightsizer.dto.AzureCostVmDailyDto;
+import com.mcmp.azure.vm.rightsizer.dto.RecommendCandidateDto;
 import com.mcmp.azure.vm.rightsizer.dto.RecommendVmTypeDto;
 import com.mcmp.azure.vm.rightsizer.dto.UnusedVmDto;
 import lombok.RequiredArgsConstructor;
@@ -42,7 +43,7 @@ public class RightSizeBatchConfig {
     @Bean(name = RightSizeBatchConstants.SIZE_UP_STEP)
     public Step recommendVmStep() {
         return new StepBuilder(RightSizeBatchConstants.SIZE_UP_STEP, jobRepository)
-                .<AzureCostVmDailyDto, RecommendVmTypeDto>chunk(1, transactionManager)
+                .<RecommendCandidateDto, RecommendVmTypeDto>chunk(1, transactionManager)
                 .reader(recommendVmListItemReader)
                 .processor(recommendVmItemProcessor)
                 .writer(recommendVmListItemWriter)
