@@ -1,7 +1,6 @@
 package com.mcmp.collector.batch;
 
 import com.mcmp.collector.client.AlarmServiceClient;
-import com.mcmp.collector.dao.AlarmHistoryDao;
 import com.mcmp.collector.dao.BudgetCheckDao;
 import com.mcmp.collector.dto.AlarmHistoryDto;
 import com.mcmp.collector.dto.BudgetUsageDto;
@@ -32,7 +31,6 @@ public class BudgetCheckTasklet implements Tasklet {
 
     private final BudgetCheckDao budgetCheckDao;
     private final AlarmServiceClient alarmServiceClient;
-    private final AlarmHistoryDao alarmHistoryDao;
 
     @Override
     public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {
@@ -93,7 +91,7 @@ public class BudgetCheckTasklet implements Tasklet {
         );
 
         AlarmHistoryDto alarm = AlarmHistoryDto.builder()
-            .alarmType(List.of("mail"))
+            .alarmType(List.of("mail", "slack"))
             .eventType("Budget")
             .resourceId(usage.getProjectCd())
             .resourceType(usage.getCspType() + " Resources")
@@ -107,24 +105,16 @@ public class BudgetCheckTasklet implements Tasklet {
             .projectCd(usage.getProjectCd())
             .build();
 
-        // 알림 발송
+        // 알림 발송 (AlarmService에서 DB 저장도 처리함)
         try {
             alarmServiceClient.sendOptiAlarmMail(alarm);
-            log.info("Budget alarm sent: project={}, csp={}, usage={}%, urgency={}",
+            log.info("Budget alarm sent to AlarmService: project={}, csp={}, usage={}%, urgency={}",
                 usage.getProjectCd(), usage.getCspType(),
                 usage.getUsageRate().setScale(2, RoundingMode.HALF_UP), urgency);
         } catch (Exception e) {
-            log.warn("Failed to send budget alarm email for project: {}, csp: {} - {}",
+            log.error("Failed to send budget alarm to AlarmService for project: {}, csp: {} - {}",
                 usage.getProjectCd(), usage.getCspType(), e.getMessage());
         }
-
-        // DB 저장
-        alarmHistoryDao.insertAlarmHistory(alarm);
-        log.info("Budget alarm saved to DB: project={}, csp={}, totalCost={}, budget={}, usage={}%",
-            usage.getProjectCd(), usage.getCspType(),
-            usage.getTotalCost().setScale(2, RoundingMode.HALF_UP),
-            usage.getBudget().setScale(2, RoundingMode.HALF_UP),
-            usage.getUsageRate().setScale(2, RoundingMode.HALF_UP));
     }
 
     /**

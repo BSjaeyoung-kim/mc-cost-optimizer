@@ -3,7 +3,6 @@ package com.mcmp.azure.vm.rightsizer.batch;
 import com.mcmp.azure.vm.rightsizer.client.AlarmServiceClient;
 import com.mcmp.azure.vm.rightsizer.dto.AlarmHistoryDto;
 import com.mcmp.azure.vm.rightsizer.dto.RecommendVmTypeDto;
-import com.mcmp.azure.vm.rightsizer.mapper.AlarmHistoryMapper;
 import com.mcmp.azure.vm.rightsizer.mapper.ServiceGroupMetaMapper;
 import com.mcmp.azure.vm.rightsizer.properties.AzureCredentialProperties;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +22,6 @@ import java.util.Map;
 public class RecommendVmListItemWriter implements ItemWriter<RecommendVmTypeDto> {
 
     private final AzureCredentialProperties azureCredentialProperties;
-    private final AlarmHistoryMapper alarmHistoryMapper;
     private final AlarmServiceClient alarmServiceClient;
     private final ServiceGroupMetaMapper serviceGroupMetaMapper;
 
@@ -44,7 +42,7 @@ public class RecommendVmListItemWriter implements ItemWriter<RecommendVmTypeDto>
 
             // AlarmGuideGrid.vue 파일을 보고 TYPE을 임시로 작성한다.
             AlarmHistoryDto alarmHistoryDto = AlarmHistoryDto.builder()
-                    .alarmType(List.of("mail"))
+                    .alarmType(List.of("mail", "slack"))
                     // Abnormal (비정상), Resize(사이즈 변경), Unused(미사용)
                     .eventType("Resize")
                     .resourceId(recommendVmTypeDto.getVmId())
@@ -67,20 +65,15 @@ public class RecommendVmListItemWriter implements ItemWriter<RecommendVmTypeDto>
                     .projectCd(projectCd)  // servicegroup_meta에서 조회한 값 사용
                     .build();
 
-            // 메일 발송 (에러 처리)
+            // 알림 발송 (AlarmService에서 DB 저장도 처리함)
             try {
                 alarmServiceClient.sendOptiAlarmMail(alarmHistoryDto);
-                log.info("Mail sent successfully for vmId: {}, plan: {}",
-                    recommendVmTypeDto.getVmId(), plan);
+                log.info("Sent resize alarm to AlarmService for vmId: {}, plan: {}, projectCd: {}",
+                    recommendVmTypeDto.getVmId(), plan, projectCd);
             } catch (Exception e) {
-                log.error("Failed to send mail for vmId: {}, plan: {}, error: {}",
+                log.error("Failed to send resize alarm to AlarmService for vmId: {}, plan: {}, error: {}",
                     recommendVmTypeDto.getVmId(), plan, e.getMessage());
             }
-
-            // AlarmService에서 현재 DB history가 insert 되지 않아 넣은 코드.
-//            alarmHistoryMapper.insertAlarmHistory(alarmHistoryDto);
-            log.info("Saved {} Azure Vm Size {} Alarm History to database (projectCd: {})",
-                    recommendVmTypeDto.getVmId(), plan, projectCd);
         }
     }
 }

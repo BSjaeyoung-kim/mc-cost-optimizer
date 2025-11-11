@@ -3,7 +3,6 @@ package com.mcmp.azure.vm.rightsizer.batch;
 import com.mcmp.azure.vm.rightsizer.client.AlarmServiceClient;
 import com.mcmp.azure.vm.rightsizer.dto.AlarmHistoryDto;
 import com.mcmp.azure.vm.rightsizer.dto.UnusedVmDto;
-import com.mcmp.azure.vm.rightsizer.mapper.AlarmHistoryMapper;
 import com.mcmp.azure.vm.rightsizer.properties.AzureCredentialProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +23,6 @@ import java.util.List;
 public class UnusedVmListItemWriter implements ItemWriter<UnusedVmDto> {
 
     private final AzureCredentialProperties azureCredentialProperties;
-    private final AlarmHistoryMapper alarmHistoryMapper;
     private final AlarmServiceClient alarmServiceClient;
 
     @Override
@@ -44,7 +42,7 @@ public class UnusedVmListItemWriter implements ItemWriter<UnusedVmDto> {
             );
 
             AlarmHistoryDto alarmHistoryDto = AlarmHistoryDto.builder()
-                .alarmType(List.of("mail"))
+                .alarmType(List.of("mail", "slack"))
                 // Abnormal (비정상), Resize(사이즈 변경), Unused(미사용)
                 .eventType("Unused")
                 .resourceId(unusedVm.getVmId())
@@ -60,21 +58,17 @@ public class UnusedVmListItemWriter implements ItemWriter<UnusedVmDto> {
                 .projectCd(unusedVm.getProjectCd())
                 .build();
 
-            // 알림 발송 (알림 서비스 URL 미설정 시 skip)
+            // 알림 발송 (AlarmService에서 DB 저장도 처리함)
             try {
                 alarmServiceClient.sendOptiAlarmMail(alarmHistoryDto);
-                log.info("Sent unused alarm notification for VM: {}", unusedVm.getVmId());
+                log.info("Sent unused alarm to AlarmService for VM: {} (project: {}, avg: {}%, max: {}%)",
+                    unusedVm.getVmId(), unusedVm.getProjectCd(),
+                    String.format("%.2f", unusedVm.getAvgCpu14Days()),
+                    String.format("%.2f", unusedVm.getMaxCpu14Days()));
             } catch (Exception e) {
-                log.warn("Failed to send unused alarm notification for VM: {} - {}",
+                log.error("Failed to send unused alarm to AlarmService for VM: {} - {}",
                     unusedVm.getVmId(), e.getMessage());
             }
-
-            // AlarmService에서 현재 DB history가 insert 되지 않아 넣은 코드.
-            alarmHistoryMapper.insertAlarmHistory(alarmHistoryDto);
-            log.info("Saved {} Azure Unused Alarm History to database (project: {}, avg: {}%, max: {}%)",
-                unusedVm.getVmId(), unusedVm.getProjectCd(),
-                String.format("%.2f", unusedVm.getAvgCpu14Days()),
-                String.format("%.2f", unusedVm.getMaxCpu14Days()));
         }
     }
 }

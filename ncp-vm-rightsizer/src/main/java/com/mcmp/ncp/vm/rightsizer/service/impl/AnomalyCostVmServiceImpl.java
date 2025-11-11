@@ -36,6 +36,12 @@ public class AnomalyCostVmServiceImpl implements AnomalyCostVmService {
         // 지난달 평균 금액.
         NcpVmMonthlyAvgCostDto ncpVmMonthlyAvgCostDto = ncpCostVmDailyMapper.getAvgCostByInstanceNoAndRegion(ncpCostVmMonthDto.getInstanceNo(), ncpCostVmMonthDto.getRegionCode());
 
+        // 과거 비용 데이터가 없는 경우 이상비용 검사 skip
+        if (ncpVmMonthlyAvgCostDto == null) {
+            log.debug("No historical cost data found for VM: {}. Skipping anomaly detection.", ncpCostVmMonthDto.getInstanceNo());
+            return null;
+        }
+
         // 오늘 평균 금액
         LocalDateTime collectDate = LocalDateTime.now();
         double percentagePoint = getPercentagePoint(ncpVmMonthlyAvgCostDto);
@@ -58,7 +64,9 @@ public class AnomalyCostVmServiceImpl implements AnomalyCostVmService {
     }
 
     private double getPercentagePoint(NcpVmMonthlyAvgCostDto ncpVmMonthlyAvgCostDto) {
-        if (ncpVmMonthlyAvgCostDto.getAvgCost() == null ||
+        // DTO 자체가 null이거나 비용 데이터가 없는 경우
+        if (ncpVmMonthlyAvgCostDto == null ||
+                ncpVmMonthlyAvgCostDto.getAvgCost() == null ||
                 ncpVmMonthlyAvgCostDto.getAvgCost() == 0 ||
                 ncpVmMonthlyAvgCostDto.getLatestCost() == null) {
             return 0.0;

@@ -3,7 +3,6 @@ package com.mcmp.ncp.vm.rightsizer.batch;
 import com.mcmp.ncp.vm.rightsizer.client.AlarmServiceClient;
 import com.mcmp.ncp.vm.rightsizer.dto.AlarmHistoryDto;
 import com.mcmp.ncp.vm.rightsizer.dto.RecommendVmTypeDto;
-import com.mcmp.ncp.vm.rightsizer.mapper.AlarmHistoryMapper;
 import com.mcmp.ncp.vm.rightsizer.mapper.ServiceGroupMetaMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,7 +20,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class RecommendVmListItemWriter implements ItemWriter<RecommendVmTypeDto> {
 
-    private final AlarmHistoryMapper alarmHistoryMapper;
     private final AlarmServiceClient alarmServiceClient;
     private final ServiceGroupMetaMapper serviceGroupMetaMapper;
 
@@ -41,7 +39,7 @@ public class RecommendVmListItemWriter implements ItemWriter<RecommendVmTypeDto>
 
             // AlarmGuideGrid.vue 파일을 보고 TYPE을 임시로 작성한다.
             AlarmHistoryDto alarmHistoryDto = AlarmHistoryDto.builder()
-                    .alarmType(List.of("mail"))
+                    .alarmType(List.of("mail", "slack"))
                     // Abnormal (비정상), Resize(사이즈 변경), Unused(미사용)
                     .eventType("Resize")
                     .resourceId(recommendVmTypeDto.getVmId())
@@ -63,29 +61,16 @@ public class RecommendVmListItemWriter implements ItemWriter<RecommendVmTypeDto>
                     .cspType("NCP")
                     .projectCd(projectCd)  // servicegroup_meta에서 조회한 값 사용
                     .build();
-            // 메일 발송 시도
+            // 알림 발송 (AlarmService에서 DB 저장도 처리함)
             try {
                 alarmServiceClient.sendOptiAlarmMail(alarmHistoryDto);
-                log.info("Mail sent successfully for vmId: {}, plan: {}, urgency: {}",
-                    recommendVmTypeDto.getVmId(), plan, alarmHistoryDto.getUrgency());
+                log.info("Sent resize alarm to AlarmService for vmId: {}, plan: {}, projectCd: {}, currentType: {} -> recommendType: {}",
+                    recommendVmTypeDto.getVmId(), plan, projectCd,
+                    recommendVmTypeDto.getCurrentType(), recommendVmTypeDto.getRecommendType());
             } catch (Exception e) {
-                log.error("Failed to send mail for vmId: {}, plan: {}, error: {}, stackTrace: {}",
-                    recommendVmTypeDto.getVmId(),
-                    plan,
-                    e.getMessage(),
-                    e.getClass().getName());
-                log.debug("Mail send error details", e);
+                log.error("Failed to send resize alarm to AlarmService for vmId: {}, plan: {}, error: {}",
+                    recommendVmTypeDto.getVmId(), plan, e.getMessage());
             }
-
-            // DB 저장 (메일 발송 실패와 무관하게 진행)
-            alarmHistoryMapper.insertAlarmHistory(alarmHistoryDto);
-            log.info("Saved {} Ncp Vm Size {} Alarm History to database (projectCd: {}, resourceId: {}, currentType: {} -> recommendType: {})",
-                    recommendVmTypeDto.getVmId(),
-                    plan,
-                    projectCd,
-                    recommendVmTypeDto.getVmId(),
-                    recommendVmTypeDto.getCurrentType(),
-                    recommendVmTypeDto.getRecommendType());
         }
     }
 }

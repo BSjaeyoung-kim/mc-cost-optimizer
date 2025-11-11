@@ -26,7 +26,7 @@
                 MAX(cost.lineitem_usageaccountid) AS account_id
             FROM tbl_table_billing_detail_${value} cost
             INNER JOIN servicegroup_meta meta
-                ON cost.lineitem_resourceid = meta.csp_instanceid
+                ON cost.lineitem_resourceid COLLATE utf8mb4_unicode_520_ci = meta.csp_instanceid COLLATE utf8mb4_unicode_520_ci
                 AND meta.csp_type = 'AWS'
             WHERE meta.service_cd != 'undefined'
               AND cost.lineitem_usagestartdate >= CONCAT(
@@ -53,11 +53,12 @@
             costs.account_id
         FROM aws_costs costs
         INNER JOIN budget_monthly budget
-            ON budget.project_cd = costs.project_cd
+            ON budget.project_cd COLLATE utf8mb4_unicode_520_ci = costs.project_cd COLLATE utf8mb4_unicode_520_ci
             AND budget.csp = 'AWS'
             AND budget.year = YEAR(CURDATE())
             AND budget.month = MONTH(CURDATE())
-        WHERE (costs.total_cost / budget.budget * 100) >= 80
+        WHERE budget.budget > 0
+          AND (costs.total_cost / budget.budget * 100) >= 80
         ORDER BY usage_rate DESC
     </select>
 

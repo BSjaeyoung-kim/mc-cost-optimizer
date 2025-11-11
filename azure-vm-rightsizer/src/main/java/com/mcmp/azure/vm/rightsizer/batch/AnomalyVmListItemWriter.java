@@ -3,7 +3,6 @@ package com.mcmp.azure.vm.rightsizer.batch;
 import com.mcmp.azure.vm.rightsizer.client.AlarmServiceClient;
 import com.mcmp.azure.vm.rightsizer.dto.AlarmHistoryDto;
 import com.mcmp.azure.vm.rightsizer.dto.AnomalyDto;
-import com.mcmp.azure.vm.rightsizer.mapper.AlarmHistoryMapper;
 import com.mcmp.azure.vm.rightsizer.mapper.DailyAbnormalByProductMapper;
 import com.mcmp.azure.vm.rightsizer.properties.AzureCredentialProperties;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +21,6 @@ import java.util.List;
 public class AnomalyVmListItemWriter implements ItemWriter<AnomalyDto> {
 
     private final AzureCredentialProperties azureCredentialProperties;
-    private final AlarmHistoryMapper alarmHistoryMapper;
     private final DailyAbnormalByProductMapper dailyAbnormalByProductMapper;
     private final AlarmServiceClient alarmServiceClient;
 
@@ -42,7 +40,7 @@ public class AnomalyVmListItemWriter implements ItemWriter<AnomalyDto> {
             );
 
             AlarmHistoryDto alarmHistoryDto = AlarmHistoryDto.builder()
-                    .alarmType(List.of("mail"))
+                    .alarmType(List.of("mail", "slack"))
                     // Abnormal (비정상), Resize(사이즈 변경), Unused(미사용)
                     .eventType("Abnormal")
                     .resourceId(anomalyDto.getVmId())
@@ -58,21 +56,19 @@ public class AnomalyVmListItemWriter implements ItemWriter<AnomalyDto> {
                     .projectCd(anomalyDto.getProjectCd())  // AnomalyDto에서 가져온 값 사용 (servicegroup_meta 조인)
                     .build();
 
-            // 알림 발송 (알림 서비스 URL 미설정 시 skip)
+            // 알림 발송 (AlarmService에서 DB 저장도 처리함)
             try {
                 alarmServiceClient.sendOptiAlarmMail(alarmHistoryDto);
-                log.info("Sent alarm notification for VM: {}", anomalyDto.getVmId());
-            } catch (Exception e) {
-                log.warn("Failed to send alarm notification for VM: {} - {}", anomalyDto.getVmId(), e.getMessage());
-            }
-
-            // AlarmService에서 현재 DB history가 insert 되지 않아 넣은 코드.
-            alarmHistoryMapper.insertAlarmHistory(alarmHistoryDto);
-            // 이상비용 DB insert
-            dailyAbnormalByProductMapper.insertDailyAbnormalByProduct(anomalyDto);
-            log.info("Saved {} Azure Abnormal Alarm History to database (project: {}, rating: {}, percentage: {}%)",
+                log.info("Sent abnormal alarm to AlarmService for VM: {} (project: {}, rating: {}, percentage: {}%)",
                     anomalyDto.getVmId(), anomalyDto.getProjectCd(), anomalyDto.getAbnormalRating(),
                     String.format("%.1f", anomalyDto.getPercentagePoint()));
+            } catch (Exception e) {
+                log.error("Failed to send abnormal alarm to AlarmService for VM: {} - {}",
+                    anomalyDto.getVmId(), e.getMessage());
+            }
+
+            // 이상비용 DB insert
+            dailyAbnormalByProductMapper.insertDailyAbnormalByProduct(anomalyDto);
         }
     }
 }

@@ -3,7 +3,6 @@ package com.mcmp.ncp.vm.rightsizer.batch;
 import com.mcmp.ncp.vm.rightsizer.client.AlarmServiceClient;
 import com.mcmp.ncp.vm.rightsizer.dto.AlarmHistoryDto;
 import com.mcmp.ncp.vm.rightsizer.dto.UnusedDto;
-import com.mcmp.ncp.vm.rightsizer.mapper.AlarmHistoryMapper;
 import com.mcmp.ncp.vm.rightsizer.properties.NcpCredentialProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +23,6 @@ import java.util.List;
 public class UnusedVMListItemWriter implements ItemWriter<UnusedDto> {
 
     private final NcpCredentialProperties ncpCredentialProperties;
-    private final AlarmHistoryMapper alarmHistoryMapper;
     private final AlarmServiceClient alarmServiceClient;
 
     @Override
@@ -44,7 +42,7 @@ public class UnusedVMListItemWriter implements ItemWriter<UnusedDto> {
             );
 
             AlarmHistoryDto alarmHistoryDto = AlarmHistoryDto.builder()
-                .alarmType(List.of("mail"))
+                .alarmType(List.of("mail", "slack"))
                 // Abnormal (비정상), Resize(사이즈 변경), Unused(미사용)
                 .eventType("Unused")
                 .resourceId(unusedDto.getInstanceNo())
@@ -60,21 +58,17 @@ public class UnusedVMListItemWriter implements ItemWriter<UnusedDto> {
                 .projectCd(unusedDto.getProjectCd())
                 .build();
 
-            // 알림 발송 (알림 서비스 URL 미설정 시 skip)
+            // 알림 발송 (AlarmService에서 DB 저장도 처리함)
             try {
                 alarmServiceClient.sendOptiAlarmMail(alarmHistoryDto);
-                log.info("Sent unused alarm notification for Instance: {}", unusedDto.getInstanceNo());
+                log.info("Sent unused alarm to AlarmService for Instance: {} (project: {}, avg: {}%, max: {}%)",
+                    unusedDto.getInstanceNo(), unusedDto.getProjectCd(),
+                    String.format("%.2f", unusedDto.getAvgCpu14Days()),
+                    String.format("%.2f", unusedDto.getMaxCpu14Days()));
             } catch (Exception e) {
-                log.warn("Failed to send unused alarm notification for Instance: {} - {}",
+                log.error("Failed to send unused alarm to AlarmService for Instance: {} - {}",
                     unusedDto.getInstanceNo(), e.getMessage());
             }
-
-            // AlarmService에서 현재 DB history가 insert 되지 않아 넣은 코드.
-            alarmHistoryMapper.insertAlarmHistory(alarmHistoryDto);
-            log.info("Saved {} NCP Unused Alarm History to database (project: {}, avg: {}%, max: {}%)",
-                unusedDto.getInstanceNo(), unusedDto.getProjectCd(),
-                String.format("%.2f", unusedDto.getAvgCpu14Days()),
-                String.format("%.2f", unusedDto.getMaxCpu14Days()));
         }
     }
 }
