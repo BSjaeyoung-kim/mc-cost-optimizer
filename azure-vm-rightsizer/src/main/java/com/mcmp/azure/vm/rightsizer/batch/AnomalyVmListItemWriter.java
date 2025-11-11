@@ -35,10 +35,10 @@ public class AnomalyVmListItemWriter implements ItemWriter<AnomalyDto> {
 
             // 등급별 메시지 생성
             String note = String.format(
-                    "VM(%s)의 비용이 지난달 평균(%.2f원) 대비 %.1f%% 증가했습니다.",
+                    "The cost of VM (%s) has increased by %.1f%% compared to last month's average (%.2f KRW).",
                     anomalyDto.getVmId(),
-                    anomalyDto.getSubjectCost(),
-                    anomalyDto.getPercentagePoint()
+                    anomalyDto.getPercentagePoint(),
+                    anomalyDto.getSubjectCost()
             );
 
             AlarmHistoryDto alarmHistoryDto = AlarmHistoryDto.builder()

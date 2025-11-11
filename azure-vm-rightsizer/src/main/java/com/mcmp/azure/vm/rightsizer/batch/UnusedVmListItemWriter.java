@@ -36,8 +36,8 @@ public class UnusedVmListItemWriter implements ItemWriter<UnusedVmDto> {
 
             // Unused 메시지 생성
             String note = String.format(
-                "VM(%s)의 CPU 사용률이 지난 14일간 평균 %.2f%%, 최대 %.2f%%로 매우 낮습니다. " +
-                "Unused 자원일 가능성이 있으니 확인이 필요합니다. ",
+                "VM (%s) has very low CPU usage over the past 14 days (average: %.2f%%, max: %.2f%%). " +
+                "This may indicate an unused resource that needs verification.",
                 unusedVm.getVmId(),
                 unusedVm.getAvgCpu14Days(),
                 unusedVm.getMaxCpu14Days()

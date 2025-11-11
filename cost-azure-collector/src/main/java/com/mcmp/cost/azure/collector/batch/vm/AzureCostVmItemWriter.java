@@ -58,11 +58,11 @@ public class AzureCostVmItemWriter implements ItemWriter<List<AzureCostVmDaily>>
         if (usageRate.compareTo(BigDecimal.valueOf(100)) >= 0) {
             // 예산 초과 - Critical
             urgency = "Critical";
-            note = "예산이 초과되었습니다. (사용률: " + usageRate.setScale(2, RoundingMode.HALF_UP) + "%)";
+            note = "Budget has been exceeded. (Usage rate: " + usageRate.setScale(2, RoundingMode.HALF_UP) + "%)";
         } else if (usageRate.compareTo(BigDecimal.valueOf(80)) >= 0) {
             // 예산 80% 이상 - Caution
             urgency = "Caution";
-            note = "설정한 예산 비용에 근접하게 사용 중입니다. (사용률: " + usageRate.setScale(2, RoundingMode.HALF_UP) + "%)";
+            note = "Budget usage is approaching the set limit. (Usage rate: " + usageRate.setScale(2, RoundingMode.HALF_UP) + "%)";
         } else {
             // 알람 불필요
             return null;

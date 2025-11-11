@@ -61,6 +61,17 @@ public class RecommendVmListItemProcessor implements ItemProcessor<RecommendCand
             return null;
         }
 
+        // Modernize: 추천 VM이 기존 VM과 동일하면 알림 보내지 않음
+        if ("Modernize".equals(candidate.getRecommendType())) {
+            if (result.getRecommendType() != null &&
+                result.getRecommendType().equals(candidate.getInstanceType())) {
+                log.info("Modernize skipped: Recommended VM type is same as current type. vmId={}, currentType={}",
+                    candidate.getVmId(),
+                    candidate.getInstanceType());
+                return null;
+            }
+        }
+
         // DTO 조립
         result.setVmId(candidate.getVmId());
         result.setCurrentType(candidate.getInstanceType());
