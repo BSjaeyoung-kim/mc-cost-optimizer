@@ -3,6 +3,7 @@ package com.mcmp.ncp.vm.rightsizer.batch;
 import com.mcmp.ncp.vm.rightsizer.dto.RecommendCandidateDto;
 import com.mcmp.ncp.vm.rightsizer.dto.RecommendVmTypeDto;
 import com.mcmp.ncp.vm.rightsizer.mapper.NcpRightSizeMapper;
+import com.mcmp.ncp.vm.rightsizer.mapper.UnusedBatchRstMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.configuration.annotation.StepScope;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Component;
 public class RecommendVmListItemProcessor implements ItemProcessor<RecommendCandidateDto, RecommendVmTypeDto> {
 
     private final NcpRightSizeMapper ncpRightSizeMapper;
+    private final UnusedBatchRstMapper unusedBatchRstMapper;
 
     @Override
     public RecommendVmTypeDto process(RecommendCandidateDto candidate) throws Exception {
@@ -24,6 +26,13 @@ public class RecommendVmListItemProcessor implements ItemProcessor<RecommendCand
             candidate.getRecommendType(),
             candidate.getAvg4DaysCpu(),
             candidate.getMax4DaysCpu());
+
+        // Unused Job에서 이미 처리된 Instance인지 확인 (중복 알림 방지)
+        int unusedCount = unusedBatchRstMapper.checkTodayUnusedExists("NCP", candidate.getResourceId());
+        if (unusedCount > 0) {
+            log.info("Skipping Recommend: Instance already processed by Unused Job today. instanceNo={}", candidate.getResourceId());
+            return null;
+        }
 
         RecommendVmTypeDto result;
 

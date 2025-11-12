@@ -3,6 +3,7 @@ package com.mcmp.ncp.vm.rightsizer.batch;
 import com.mcmp.ncp.vm.rightsizer.client.AlarmServiceClient;
 import com.mcmp.ncp.vm.rightsizer.dto.AlarmHistoryDto;
 import com.mcmp.ncp.vm.rightsizer.dto.UnusedDto;
+import com.mcmp.ncp.vm.rightsizer.mapper.UnusedBatchRstMapper;
 import com.mcmp.ncp.vm.rightsizer.properties.NcpCredentialProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +25,7 @@ public class UnusedVMListItemWriter implements ItemWriter<UnusedDto> {
 
     private final NcpCredentialProperties ncpCredentialProperties;
     private final AlarmServiceClient alarmServiceClient;
+    private final UnusedBatchRstMapper unusedBatchRstMapper;
 
     @Override
     public void write(Chunk<? extends UnusedDto> chunk) throws Exception {
@@ -65,6 +67,15 @@ public class UnusedVMListItemWriter implements ItemWriter<UnusedDto> {
                     unusedDto.getInstanceNo(), unusedDto.getProjectCd(),
                     String.format("%.2f", unusedDto.getAvgCpu14Days()),
                     String.format("%.2f", unusedDto.getMaxCpu14Days()));
+
+                // unused_batch_rst 테이블에 Unused 판정 기록 (Recommend Job에서 중복 알림 방지용)
+                unusedBatchRstMapper.insertUnusedBatchRst(
+                    "NCP",
+                    unusedDto.getMemberNo(),
+                    unusedDto.getInstanceNo(),
+                    "Unused"
+                );
+                log.debug("Recorded unused instance to unused_batch_rst: {}", unusedDto.getInstanceNo());
             } catch (Exception e) {
                 log.error("Failed to send unused alarm to AlarmService for Instance: {} - {}",
                     unusedDto.getInstanceNo(), e.getMessage());

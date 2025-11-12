@@ -3,6 +3,7 @@ package com.mcmp.azure.vm.rightsizer.batch;
 import com.mcmp.azure.vm.rightsizer.client.AlarmServiceClient;
 import com.mcmp.azure.vm.rightsizer.dto.AlarmHistoryDto;
 import com.mcmp.azure.vm.rightsizer.dto.UnusedVmDto;
+import com.mcmp.azure.vm.rightsizer.mapper.UnusedBatchRstMapper;
 import com.mcmp.azure.vm.rightsizer.properties.AzureCredentialProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +25,7 @@ public class UnusedVmListItemWriter implements ItemWriter<UnusedVmDto> {
 
     private final AzureCredentialProperties azureCredentialProperties;
     private final AlarmServiceClient alarmServiceClient;
+    private final UnusedBatchRstMapper unusedBatchRstMapper;
 
     @Override
     public void write(Chunk<? extends UnusedVmDto> chunk) throws Exception {
@@ -65,6 +67,15 @@ public class UnusedVmListItemWriter implements ItemWriter<UnusedVmDto> {
                     unusedVm.getVmId(), unusedVm.getProjectCd(),
                     String.format("%.2f", unusedVm.getAvgCpu14Days()),
                     String.format("%.2f", unusedVm.getMaxCpu14Days()));
+
+                // unused_batch_rst 테이블에 Unused 판정 기록 (Recommend Job에서 중복 알림 방지용)
+                unusedBatchRstMapper.insertUnusedBatchRst(
+                    "AZURE",
+                    azureCredentialProperties.getSubscriptionId(),
+                    unusedVm.getVmId(),
+                    "Unused"
+                );
+                log.debug("Recorded unused VM to unused_batch_rst: {}", unusedVm.getVmId());
             } catch (Exception e) {
                 log.error("Failed to send unused alarm to AlarmService for VM: {} - {}",
                     unusedVm.getVmId(), e.getMessage());

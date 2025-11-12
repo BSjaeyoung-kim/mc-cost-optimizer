@@ -28,17 +28,17 @@ public class AzureRightsizerScheduleJob extends QuartzJobBean {
         log.info("====================================");
 
         try {
-            // Size Up VM 배치 실행 (Recommend VM)
-            log.info("Executing Size Up VM Batch (Recommend)...");
-            batchExecutorService.executeBatch(RightSizeType.AZURE_SIZE_UP_VM);
+            // Unused Resource Detection 배치 실행 (우선순위 1 - unused_batch_rst에 기록)
+            log.info("Executing Unused Resource Detection Batch...");
+            batchExecutorService.executeBatch(RightSizeType.AZURE_UNUSED_VM);
 
             // Anomaly VM 배치 실행
             log.info("Executing Anomaly VM Batch...");
             batchExecutorService.executeBatch(RightSizeType.AZURE_ANOMALY_VM);
 
-            // Unused Resource Detection 배치 실행
-            log.info("Executing Unused Resource Detection Batch...");
-            batchExecutorService.executeBatch(RightSizeType.AZURE_UNUSED_VM);
+            // Size Up VM 배치 실행 (Recommend VM - unused_batch_rst 체크 후 중복 방지)
+            log.info("Executing Size Up VM Batch (Recommend)...");
+            batchExecutorService.executeBatch(RightSizeType.AZURE_SIZE_UP_VM);
 
             log.info("Azure VM Rightsizer Batch Job completed successfully");
         } catch (Exception e) {

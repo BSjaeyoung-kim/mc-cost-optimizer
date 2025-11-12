@@ -28,17 +28,17 @@ public class NcpRightsizerScheduleJob extends QuartzJobBean {
         log.info("====================================");
 
         try {
-            // Size Down VM 배치 실행 (Recommend VM)
-            log.info("Executing Size Down VM Batch (Recommend)...");
-            batchExecutorService.executeBatch(RightSizeType.NCP_SIZE_DOWN_VM);
+            // Unused Resource Detection 배치 실행 (우선순위 1 - unused_batch_rst에 기록)
+            log.info("Executing Unused Resource Detection Batch...");
+            batchExecutorService.executeBatch(RightSizeType.NCP_UNUSED_VM);
 
             // Anomaly VM 배치 실행
             log.info("Executing Anomaly VM Batch...");
             batchExecutorService.executeBatch(RightSizeType.NCP_ANOMALY_VM);
 
-            // Unused Resource Detection 배치 실행
-            log.info("Executing Unused Resource Detection Batch...");
-            batchExecutorService.executeBatch(RightSizeType.NCP_UNUSED_VM);
+            // Size Down VM 배치 실행 (Recommend VM - unused_batch_rst 체크 후 중복 방지)
+            log.info("Executing Size Down VM Batch (Recommend)...");
+            batchExecutorService.executeBatch(RightSizeType.NCP_SIZE_DOWN_VM);
 
             log.info("NCP VM Rightsizer Batch Job completed successfully");
         } catch (Exception e) {

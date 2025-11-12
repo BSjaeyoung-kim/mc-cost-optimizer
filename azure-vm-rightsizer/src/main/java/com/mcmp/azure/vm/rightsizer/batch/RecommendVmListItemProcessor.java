@@ -3,6 +3,7 @@ package com.mcmp.azure.vm.rightsizer.batch;
 import com.mcmp.azure.vm.rightsizer.dto.RecommendCandidateDto;
 import com.mcmp.azure.vm.rightsizer.dto.RecommendVmTypeDto;
 import com.mcmp.azure.vm.rightsizer.mapper.AzureRightSizeMapper;
+import com.mcmp.azure.vm.rightsizer.mapper.UnusedBatchRstMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.configuration.annotation.StepScope;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Component;
 public class RecommendVmListItemProcessor implements ItemProcessor<RecommendCandidateDto, RecommendVmTypeDto> {
 
     private final AzureRightSizeMapper azureRightSizeMapper;
+    private final UnusedBatchRstMapper unusedBatchRstMapper;
 
     @Override
     public RecommendVmTypeDto process(RecommendCandidateDto candidate) throws Exception {
@@ -24,6 +26,13 @@ public class RecommendVmListItemProcessor implements ItemProcessor<RecommendCand
             candidate.getRecommendType(),
             candidate.getAvg4DaysCpu(),
             candidate.getMax4DaysCpu());
+
+        // Unused Job에서 이미 처리된 VM인지 확인 (중복 알림 방지)
+        int unusedCount = unusedBatchRstMapper.checkTodayUnusedExists("AZURE", candidate.getVmId());
+        if (unusedCount > 0) {
+            log.info("Skipping Recommend: VM already processed by Unused Job today. vmId={}", candidate.getVmId());
+            return null;
+        }
 
         RecommendVmTypeDto result;
 
