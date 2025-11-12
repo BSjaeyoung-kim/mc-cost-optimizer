@@ -60,15 +60,9 @@ public class UnusedVMListItemWriter implements ItemWriter<UnusedDto> {
                 .projectCd(unusedDto.getProjectCd())
                 .build();
 
-            // 알림 발송 (AlarmService에서 DB 저장도 처리함)
+            // unused_batch_rst 테이블에 Unused 판정 기록 (Recommend Job에서 중복 알림 방지용)
+            // 알림 전송 성공 여부와 관계없이 항상 기록
             try {
-                alarmServiceClient.sendOptiAlarmMail(alarmHistoryDto);
-                log.info("Sent unused alarm to AlarmService for Instance: {} (project: {}, avg: {}%, max: {}%)",
-                    unusedDto.getInstanceNo(), unusedDto.getProjectCd(),
-                    String.format("%.2f", unusedDto.getAvgCpu14Days()),
-                    String.format("%.2f", unusedDto.getMaxCpu14Days()));
-
-                // unused_batch_rst 테이블에 Unused 판정 기록 (Recommend Job에서 중복 알림 방지용)
                 unusedBatchRstMapper.insertUnusedBatchRst(
                     "NCP",
                     unusedDto.getMemberNo(),
@@ -76,6 +70,18 @@ public class UnusedVMListItemWriter implements ItemWriter<UnusedDto> {
                     "Unused"
                 );
                 log.debug("Recorded unused instance to unused_batch_rst: {}", unusedDto.getInstanceNo());
+            } catch (Exception e) {
+                log.error("Failed to record unused instance to unused_batch_rst: {} - {}",
+                    unusedDto.getInstanceNo(), e.getMessage());
+            }
+
+            // 알림 발송 (AlarmService에서 DB 저장도 처리함)
+            try {
+                alarmServiceClient.sendOptiAlarmMail(alarmHistoryDto);
+                log.info("Sent unused alarm to AlarmService for Instance: {} (project: {}, avg: {}%, max: {}%)",
+                    unusedDto.getInstanceNo(), unusedDto.getProjectCd(),
+                    String.format("%.2f", unusedDto.getAvgCpu14Days()),
+                    String.format("%.2f", unusedDto.getMaxCpu14Days()));
             } catch (Exception e) {
                 log.error("Failed to send unused alarm to AlarmService for Instance: {} - {}",
                     unusedDto.getInstanceNo(), e.getMessage());

@@ -60,15 +60,9 @@ public class UnusedVmListItemWriter implements ItemWriter<UnusedVmDto> {
                 .projectCd(unusedVm.getProjectCd())
                 .build();
 
-            // 알림 발송 (AlarmService에서 DB 저장도 처리함)
+            // unused_batch_rst 테이블에 Unused 판정 기록 (Recommend Job에서 중복 알림 방지용)
+            // 알림 전송 성공 여부와 관계없이 항상 기록
             try {
-                alarmServiceClient.sendOptiAlarmMail(alarmHistoryDto);
-                log.info("Sent unused alarm to AlarmService for VM: {} (project: {}, avg: {}%, max: {}%)",
-                    unusedVm.getVmId(), unusedVm.getProjectCd(),
-                    String.format("%.2f", unusedVm.getAvgCpu14Days()),
-                    String.format("%.2f", unusedVm.getMaxCpu14Days()));
-
-                // unused_batch_rst 테이블에 Unused 판정 기록 (Recommend Job에서 중복 알림 방지용)
                 unusedBatchRstMapper.insertUnusedBatchRst(
                     "AZURE",
                     azureCredentialProperties.getSubscriptionId(),
@@ -76,6 +70,18 @@ public class UnusedVmListItemWriter implements ItemWriter<UnusedVmDto> {
                     "Unused"
                 );
                 log.debug("Recorded unused VM to unused_batch_rst: {}", unusedVm.getVmId());
+            } catch (Exception e) {
+                log.error("Failed to record unused VM to unused_batch_rst: {} - {}",
+                    unusedVm.getVmId(), e.getMessage());
+            }
+
+            // 알림 발송 (AlarmService에서 DB 저장도 처리함)
+            try {
+                alarmServiceClient.sendOptiAlarmMail(alarmHistoryDto);
+                log.info("Sent unused alarm to AlarmService for VM: {} (project: {}, avg: {}%, max: {}%)",
+                    unusedVm.getVmId(), unusedVm.getProjectCd(),
+                    String.format("%.2f", unusedVm.getAvgCpu14Days()),
+                    String.format("%.2f", unusedVm.getMaxCpu14Days()));
             } catch (Exception e) {
                 log.error("Failed to send unused alarm to AlarmService for VM: {} - {}",
                     unusedVm.getVmId(), e.getMessage());
