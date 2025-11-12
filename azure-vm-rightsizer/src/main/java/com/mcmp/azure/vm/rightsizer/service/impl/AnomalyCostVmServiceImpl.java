@@ -47,7 +47,7 @@ public class AnomalyCostVmServiceImpl implements AnomalyCostVmService {
         AnomalyDto anomalyDto = AnomalyDto.builder()
                 .collectDt(collectDate)
                 .vmId(azureCostVmDailyDto.getVmId())
-                .productCd("Virtual Machine(" + vmMonthlyAvgCostDto.getVmId() + ")")
+                .productCd("Virtual Machine")
                 .abnormalRating(getAnomalyRating(percentagePoint))
                 .percentagePoint(percentagePoint)
                 .standardCost(vmMonthlyAvgCostDto.getLatestCost())

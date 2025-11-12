@@ -15,11 +15,11 @@ public class BudgetService {
 
     private final BudgetDao budgetDao;
 
-    // CSP별 자동 통화 매핑
+    // CSP별 자동 통화 매핑 (DB 저장용)
     private static final Map<String, String> CSP_CURRENCY_MAP = Map.of(
             "AWS", "USD",
-            "Azure", "USD",
-            "NCP", "KRW" 
+            "Azure", "KRW",  // Azure는 KRW로 수집/저장됨
+            "NCP", "KRW"
     );
 
     public List<Integer> getAvailableYears() {
@@ -35,12 +35,19 @@ public class BudgetService {
         List<BudgetResModel> result = new ArrayList<>();
 
         for (BudgetItemModel item : list) {
+            double budgetValue = item.getBudget();
+
+            // Azure와 NCP는 KRW로 저장되어 있으므로 USD로 변환하여 반환
+            if ("Azure".equals(item.getCsp()) || "NCP".equals(item.getCsp())) {
+                budgetValue = budgetValue / 1400.0;
+            }
+
             result.add(BudgetResModel.builder()
                     .csp(item.getCsp())
                     .year(item.getYear())
                     .month(item.getMonth())
-                    .budget(item.getBudget())
-                    .currency(item.getCurrency())
+                    .budget(budgetValue)
+                    .currency("USD")  // 프론트엔드는 모두 USD로 표시
                     .build());
         }
         return result;
@@ -54,15 +61,21 @@ public class BudgetService {
             String currency = CSP_CURRENCY_MAP.getOrDefault(item.getCsp(), "USD");
             item.setCurrency(currency);
 
-            // DAO에 단일 항목 전달
+            // DAO에 단일 항목 전달 (Azure/NCP는 프론트에서 KRW로 들어온 값 그대로 저장)
             budgetDao.upsertBudget(item);
+
+            double responseBudget = item.getBudget();
+            // 응답은 USD로 변환 (조회 API와 일관성 유지)
+            if ("Azure".equals(item.getCsp()) || "NCP".equals(item.getCsp())) {
+                responseBudget = responseBudget / 1400.0;
+            }
 
             result.add(BudgetResModel.builder()
                     .csp(item.getCsp())
                     .year(item.getYear())
                     .month(item.getMonth())
-                    .budget(item.getBudget())
-                    .currency(item.getCurrency())
+                    .budget(responseBudget)
+                    .currency("USD")
                     .build());
         }
 
@@ -104,11 +117,11 @@ public class BudgetService {
         for (int month = 1; month <= 12; month++) {
             String yearMonth = String.format("%04d%02d", year, month);
 
-            // 예산 CSP별 매핑 (NCP는 KRW이므로 USD로 변환)
+            // 예산 CSP별 매핑 (Azure와 NCP는 KRW이므로 USD로 변환)
             Map<String, Double> budgetForMonth = budgetMap.getOrDefault(yearMonth, new HashMap<>());
             double budgetAWS = budgetForMonth.getOrDefault("AWS", 0.0);
-            double budgetNCP = budgetForMonth.getOrDefault("NCP", 0.0) / 1400.0; // KRW -> USD
-            double budgetAzure = budgetForMonth.getOrDefault("Azure", 0.0);
+            double budgetNCP = budgetForMonth.getOrDefault("NCP", 0.0) / 1400.0;   // KRW -> USD
+            double budgetAzure = budgetForMonth.getOrDefault("Azure", 0.0) / 1400.0; // KRW -> USD
 
             CspAmountModel budgetAmount = CspAmountModel.builder()
                     .total(budgetAWS + budgetNCP + budgetAzure)

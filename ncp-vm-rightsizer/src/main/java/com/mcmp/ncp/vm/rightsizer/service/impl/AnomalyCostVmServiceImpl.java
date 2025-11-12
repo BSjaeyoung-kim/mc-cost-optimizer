@@ -49,7 +49,7 @@ public class AnomalyCostVmServiceImpl implements AnomalyCostVmService {
                 .collectDt(collectDate)
                 .vmId(ncpVmMonthlyAvgCostDto.getInstanceNo())
                 .memberNo(ncpCostVmMonthDto.getMemberNo())
-                .productCd("Virtual Machine(" + ncpVmMonthlyAvgCostDto.getInstanceNo() + ")")
+                .productCd("Virtual Machine")
                 .abnormalRating(getAnomalyRating(percentagePoint))
                 .percentagePoint(percentagePoint)
                 .standardCost(ncpVmMonthlyAvgCostDto.getLatestCost())
