@@ -16,6 +16,7 @@
 
     <!-- AWS 프로젝트별 예산 초과 조회 -->
     <select id="selectBudgetExceededProjects" resultMap="budgetUsageResultMap" parameterType="String">
+        <![CDATA[
         WITH aws_costs AS (
             -- AWS 비용 데이터를 프로젝트별로 집계
             SELECT
@@ -60,6 +61,7 @@
         WHERE budget.budget > 0
           AND (costs.total_cost / budget.budget * 100) >= 80
         ORDER BY usage_rate DESC
+        ]]>
     </select>
 
 </mapper>

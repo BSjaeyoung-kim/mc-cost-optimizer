@@ -41,9 +41,12 @@ public class BudgetCheckTasklet implements Tasklet {
         // 현재 연월 계산 (YYYYMM 형식)
         String currentYearMonth = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMM"));
         log.info("Checking budget for year-month: {}", currentYearMonth);
+        log.info("Query will use table: tbl_table_billing_detail_{}", currentYearMonth);
 
         // 1. 예산 80% 이상 사용한 프로젝트 조회
+        log.info("Executing budget query...");
         List<BudgetUsageDto> budgetUsages = budgetCheckDao.selectBudgetExceededProjects(currentYearMonth);
+        log.info("Query executed. Result count: {}", (budgetUsages != null ? budgetUsages.size() : 0));
 
         if (budgetUsages == null || budgetUsages.isEmpty()) {
             log.info("No projects exceeding 80% budget usage found.");
