@@ -74,6 +74,12 @@ export const budgetClient = createClient(
   5000,
 );
 
+// 비용 인보이스 아카이빙 — S3 업로드/삭제라 타임아웃 여유
+export const archiveClient = createClient(
+  `${API_BE_URL}${BASE_PATH}/archive`,
+  30000,
+);
+
 // LLM recommender (port 9090, BE base path) — long timeout: each call hits an LLM
 export const llmClient = createClient(
   `${API_BE_URL}${BASE_PATH}/llm_recommender`,
