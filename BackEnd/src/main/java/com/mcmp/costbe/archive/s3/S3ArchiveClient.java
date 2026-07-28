@@ -40,7 +40,7 @@ public class S3ArchiveClient {
     }
 
     private S3Client build(UserArnModel u) {
-        StaticCredentialsProvider creds = credentialProvider.assumeRole(u.getRoleArn());
+        StaticCredentialsProvider creds = credentialProvider.getCredentials();
         if (creds == null) return null;
         // crossRegion: base 리전으로 시작하되 버킷이 다른 리전이면 SDK 가 리다이렉트로 자동 보정.
         return S3Client.builder()

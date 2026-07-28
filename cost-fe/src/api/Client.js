@@ -98,5 +98,8 @@ export const apikeyClient = createClient(
   5000,
 );
 
+// CUR 자동 설정 — IAM/S3/CUR 생성 포함하므로 타임아웃 여유
+export const curSetupClient = createClient(`${API_BE_URL}/api/aws/cur`, 90000);
+
 // Export Mock mode (used in API files)
 export { USE_MOCK };
