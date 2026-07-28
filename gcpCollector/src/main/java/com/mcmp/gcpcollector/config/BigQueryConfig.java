@@ -3,6 +3,7 @@ package com.mcmp.gcpcollector.config;
 import com.google.auth.oauth2.ServiceAccountCredentials;
 import com.google.cloud.bigquery.*;
 import com.mcmp.gcpcollector.credential.CredentialResolver;
+import com.mcmp.gcpcollector.credential.OpenBaoClient;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -13,13 +14,14 @@ import java.security.KeyFactory;
 import java.security.PrivateKey;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.Base64;
+import java.util.Map;
 
 @Slf4j
 @Configuration
 @Getter
 public class BigQueryConfig {
 
-    // env(@Value) 는 "원본 값". 실제 사용 값은 CredentialResolver 를 통해 (openbao.enabled 정책에 따라) 결정한다.
+    // 크레덴셜 env 폴백 (openbao.enabled=false 로컬 개발용)
     @Value("${gcp.project-id:}")
     private String gcpProjectId;
 
@@ -32,18 +34,18 @@ public class BigQueryConfig {
     @Value("${gcp.private-key-id:}")
     private String privateKeyId;
 
-    @Value("${gcp.dataset:}")
+    // dataset/table 은 Setup 완료 후 cost/gcp(OpenBao) 에서 읽어오므로 env 지정 불필요
     private String dataset;
-
-    @Value("${gcp.table:}")
     private String table;
 
     private String projectId;
 
     private final CredentialResolver credentialResolver;
+    private final OpenBaoClient openBaoClient;
 
-    public BigQueryConfig(CredentialResolver credentialResolver) {
+    public BigQueryConfig(CredentialResolver credentialResolver, OpenBaoClient openBaoClient) {
         this.credentialResolver = credentialResolver;
+        this.openBaoClient = openBaoClient;
     }
 
     @Bean
@@ -87,8 +89,16 @@ public class BigQueryConfig {
         this.projectId = bq.getOptions().getProjectId();
         log.info("BigQuery 연결 완료 - project: {}", projectId);
 
-        // dataset/table 미지정 시 자동 탐색
-        if (dataset == null || dataset.isEmpty() || table == null || table.isEmpty()) {
+        // dataset/table: cost/gcp(OpenBao) 우선, 없으면 자동 탐색
+        Map<String, String> costCreds = openBaoClient.readPath("cost/gcp");
+        String costDataset = costCreds.get("dataset");
+        String costTable   = costCreds.get("table");
+        if (costDataset != null && !costDataset.isEmpty()
+                && costTable != null && !costTable.isEmpty()) {
+            this.dataset = costDataset;
+            this.table   = costTable;
+            log.info("빌링 테이블 (OpenBao cost/gcp): {}.{}", this.dataset, this.table);
+        } else {
             autoDiscoverBillingTable(bq);
         }
 
@@ -128,6 +138,6 @@ public class BigQueryConfig {
             log.warn("테이블 자동 탐색 실패: {}", e.getMessage());
         }
 
-        log.warn("빌링 내보내기 테이블을 찾지 못했습니다. GCP_BQ_DATASET, GCP_BQ_TABLE 환경변수를 직접 설정하세요.");
+        log.warn("빌링 내보내기 테이블을 찾지 못했습니다. GCP Setup을 완료하거나 GCP Console에서 Billing Export를 활성화하세요.");
     }
 }

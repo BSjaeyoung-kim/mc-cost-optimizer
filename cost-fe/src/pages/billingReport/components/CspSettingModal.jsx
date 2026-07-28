@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import Modal from "@/components/common/modal/Modal";
 import Button from "@/components/common/button/Button";
 import { startCurSetup, getCurSetupStatus } from "@/api/billing/curSetup";
+import { startGcpSetup, getGcpSetupStatus } from "@/api/billing/gcpSetup";
 
-const STEPS_ORDER = [
+const AWS_STEPS_ORDER = [
   "OpenBao permission check",
   "Root key retrieval",
   "CUR existing report check",
@@ -13,6 +14,16 @@ const STEPS_ORDER = [
   "Dedicated key storage (cost/aws)",
   "DB registration",
 ];
+
+const GCP_STEPS_ORDER = [
+  "OpenBao permission check",
+  "GCP credentials check",
+  "BigQuery connection test",
+  "Billing table discovery",
+  "Store to OpenBao (cost/gcp)",
+];
+
+const STEPS_ORDER = AWS_STEPS_ORDER;
 
 const STATUS_COLOR = {
   OK:      "text-success",
@@ -41,14 +52,20 @@ const STATUS_ICON = {
 export default function CspSettingModal({ open, onClose }) {
   const [csp, setCsp] = useState("aws");
 
-  // idle | checking | configured | running | done | error
+  // AWS state
   const [phase, setPhase] = useState("idle");
   const [steps, setSteps] = useState([]);
   const [result, setResult] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
-  const [currentStatus, setCurrentStatus] = useState(null); // { costCredsStored, dbRegistered }
+  const [currentStatus, setCurrentStatus] = useState(null);
 
-  // 모달 열릴 때마다 현재 AWS 설정 상태 조회
+  // GCP state
+  const [gcpPhase, setGcpPhase] = useState("idle");
+  const [gcpSteps, setGcpSteps] = useState([]);
+  const [gcpResult, setGcpResult] = useState(null);
+  const [gcpErrorMsg, setGcpErrorMsg] = useState("");
+
+  // AWS 상태 조회
   useEffect(() => {
     if (!open || csp !== "aws") return;
     setPhase("checking");
@@ -64,6 +81,17 @@ export default function CspSettingModal({ open, onClose }) {
       });
   }, [open, csp]);
 
+  // GCP 상태 조회
+  useEffect(() => {
+    if (!open || csp !== "gcp") return;
+    setGcpPhase("checking");
+    getGcpSetupStatus()
+      .then((res) => {
+        setGcpPhase(res.data.configured ? "configured" : "idle");
+      })
+      .catch(() => setGcpPhase("idle"));
+  }, [open, csp]);
+
   const resetAws = () => {
     setPhase("idle");
     setSteps([]);
@@ -72,8 +100,16 @@ export default function CspSettingModal({ open, onClose }) {
     setCurrentStatus(null);
   };
 
+  const resetGcp = () => {
+    setGcpPhase("idle");
+    setGcpSteps([]);
+    setGcpResult(null);
+    setGcpErrorMsg("");
+  };
+
   const handleClose = () => {
     resetAws();
+    resetGcp();
     setCsp("aws");
     onClose();
   };
@@ -81,16 +117,17 @@ export default function CspSettingModal({ open, onClose }) {
   const handleCspChange = (next) => {
     if (next === csp) return;
     resetAws();
+    resetGcp();
     setCsp(next);
   };
 
   const handleStart = async () => {
     setPhase("running");
-    setSteps(STEPS_ORDER.map((name) => ({ name, status: "PENDING", message: null })));
+    setSteps(AWS_STEPS_ORDER.map((name) => ({ name, status: "PENDING", message: null })));
     try {
       const res = await startCurSetup();
       const returned = res.data.steps || [];
-      const merged = STEPS_ORDER.map((name) => {
+      const merged = AWS_STEPS_ORDER.map((name) => {
         const found = returned.find((s) => s.name === name);
         return found || { name, status: "PENDING", message: null };
       });
@@ -104,10 +141,54 @@ export default function CspSettingModal({ open, onClose }) {
     }
   };
 
+  const handleGcpStart = async () => {
+    setGcpPhase("running");
+    setGcpSteps(GCP_STEPS_ORDER.map((name) => ({ name, status: "PENDING", message: null })));
+    try {
+      const res = await startGcpSetup();
+      const returned = res.data.steps || [];
+      const merged = GCP_STEPS_ORDER.map((name) => {
+        const found = returned.find((s) => s.name === name);
+        return found || { name, status: "PENDING", message: null };
+      });
+      setGcpSteps(merged);
+      setGcpResult(res.data);
+      setGcpPhase(merged.some((s) => s.status === "FAILED") ? "error" : "done");
+    } catch (err) {
+      const msg = err?.raw?.response?.data?.error || err?.userMessage || "An unknown error occurred.";
+      setGcpErrorMsg(msg);
+      setGcpPhase("error");
+    }
+  };
+
   const failedStep = steps.find((s) => s.status === "FAILED");
+  const gcpFailedStep = gcpSteps.find((s) => s.status === "FAILED");
 
   const footer = (() => {
-    if (csp !== "aws") return <Button variant="secondary" onClick={handleClose}>Close</Button>;
+    if (csp === "gcp") {
+      if (gcpPhase === "checking") return <Button variant="secondary" disabled>Loading…</Button>;
+      if (gcpPhase === "configured") return (
+        <>
+          <Button variant="secondary" onClick={handleClose}>Close</Button>
+          <Button variant="outline-primary" onClick={() => setGcpPhase("idle")}>Reconfigure</Button>
+        </>
+      );
+      if (gcpPhase === "idle") return (
+        <>
+          <Button variant="secondary" onClick={handleClose}>Cancel</Button>
+          <Button variant="primary" onClick={handleGcpStart}>Start Setup</Button>
+        </>
+      );
+      if (gcpPhase === "running") return <Button variant="secondary" disabled>In progress…</Button>;
+      if (gcpPhase === "done") return <Button variant="primary" onClick={handleClose}>Done</Button>;
+      return (
+        <>
+          <Button variant="secondary" onClick={handleClose}>Close</Button>
+          <Button variant="primary" onClick={() => setGcpPhase("idle")}>Retry</Button>
+        </>
+      );
+    }
+    // AWS
     if (phase === "checking") return <Button variant="secondary" disabled>Loading…</Button>;
     if (phase === "configured") return (
       <>
@@ -123,7 +204,6 @@ export default function CspSettingModal({ open, onClose }) {
     );
     if (phase === "running") return <Button variant="secondary" disabled>In progress…</Button>;
     if (phase === "done") return <Button variant="primary" onClick={handleClose}>Done</Button>;
-    // error
     return (
       <>
         <Button variant="secondary" onClick={handleClose}>Close</Button>
@@ -132,7 +212,10 @@ export default function CspSettingModal({ open, onClose }) {
     );
   })();
 
-  const title = phase === "done" ? "Cost Setup — Complete" : "Cost Setup";
+  const title =
+    (csp === "aws" && phase === "done") || (csp === "gcp" && gcpPhase === "done")
+      ? "Cost Setup — Complete"
+      : "Cost Setup";
 
   return (
     <Modal
@@ -143,8 +226,12 @@ export default function CspSettingModal({ open, onClose }) {
       size="md"
       centered
       statusColor={
-        phase === "configured" || phase === "done" ? "success" :
-        phase === "error" ? "danger" : undefined
+        (csp === "aws" && (phase === "configured" || phase === "done")) ||
+        (csp === "gcp" && (gcpPhase === "configured" || gcpPhase === "done"))
+          ? "success"
+          : (csp === "aws" && phase === "error") || (csp === "gcp" && gcpPhase === "error")
+          ? "danger"
+          : undefined
       }
       footer={footer}
     >
@@ -162,7 +249,7 @@ export default function CspSettingModal({ open, onClose }) {
         </li>
         <li className="nav-item">
           <a
-            className={`nav-link ${csp === "gcp" ? "active" : ""} text-muted`}
+            className={`nav-link ${csp === "gcp" ? "active" : ""}`}
             role="button"
             onClick={() => handleCspChange("gcp")}
             style={{ fontSize: 14, padding: "6px 16px" }}
@@ -280,10 +367,120 @@ export default function CspSettingModal({ open, onClose }) {
 
       {/* GCP content */}
       {csp === "gcp" && (
-        <div className="text-center py-4 text-muted">
-          <div style={{ fontSize: 32, marginBottom: 8 }}>☁</div>
-          <div className="fw-semibold mb-1">GCP Setup</div>
-          <div style={{ fontSize: 13 }}>Coming soon.</div>
+        <div style={{ overflowY: "auto", maxHeight: 420 }}>
+          {gcpPhase === "checking" && (
+            <p className="text-muted mb-0" style={{ fontSize: 14 }}>Checking current setup status…</p>
+          )}
+
+          {gcpPhase === "configured" && (
+            <div className="border border-success rounded p-3" style={{ fontSize: 13 }}>
+              <div className="d-flex align-items-center gap-2 mb-3">
+                <span className="badge bg-success text-white">Configured</span>
+                <span className="text-muted" style={{ fontSize: 12 }}>GCP Setup is complete.</span>
+              </div>
+              <div className="mb-2">
+                <div className="text-muted mb-1" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em" }}>Credentials</div>
+                <span className="text-success" style={{ fontSize: 13 }}>✓ Stored in OpenBao (cost/gcp)</span>
+              </div>
+              <div>
+                <div className="text-muted mb-1" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em" }}>DB</div>
+                <span className="text-success" style={{ fontSize: 13 }}>✓ Registered</span>
+              </div>
+            </div>
+          )}
+
+          {gcpPhase === "idle" && (
+            <div>
+              <p className="text-muted mb-2" style={{ fontSize: 14 }}>
+                Automatically discovers and registers the BigQuery billing export table.
+              </p>
+              <div className="alert alert-info py-2" style={{ fontSize: 12 }}>
+                <strong>Prerequisite:</strong> Cloud Billing data export must be enabled in GCP Console
+                (Billing → Billing export → BigQuery export) before running Setup.
+              </div>
+            </div>
+          )}
+
+          {(gcpPhase === "running" || gcpPhase === "done" || gcpPhase === "error") && (
+            <div>
+              {gcpPhase === "running" && (
+                <p className="text-muted mb-3" style={{ fontSize: 14 }}>
+                  Connecting to BigQuery and discovering billing table. Please wait…
+                </p>
+              )}
+
+              <div className="mb-3">
+                {gcpSteps.map((step) => (
+                  <div
+                    key={step.name}
+                    className="d-flex align-items-start gap-2 py-1 border-bottom"
+                    style={{ fontSize: 14 }}
+                  >
+                    <span
+                      className={`fw-bold ${STATUS_COLOR[step.status] || "text-secondary"}`}
+                      style={{ width: 14, flexShrink: 0, marginTop: 1 }}
+                    >
+                      {STATUS_ICON[step.status] || "?"}
+                    </span>
+                    <div className="flex-grow-1">
+                      <span>{step.name}</span>
+                      {step.status === "WARN" && step.message && (
+                        <div className="text-warning" style={{ fontSize: 12 }}>{step.message}</div>
+                      )}
+                      {step.status === "FAILED" && step.message && (
+                        <div className="text-danger" style={{ fontSize: 12 }}>{step.message}</div>
+                      )}
+                    </div>
+                    <span className={`${STATUS_BADGE[step.status] || "badge bg-light border"} ms-auto`} style={{ fontSize: 12, minWidth: 52, textAlign: "center" }}>
+                      {step.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {gcpPhase === "done" && gcpResult && (
+                <div className={`border rounded p-3 mb-0 ${gcpResult.dataset ? "border-success" : "border-warning"}`} style={{ fontSize: 13 }}>
+                  <div className="mb-2">
+                    <div className="text-muted mb-1" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em" }}>Project</div>
+                    <code style={{ fontSize: 12 }}>{gcpResult.projectId}</code>
+                  </div>
+                  {gcpResult.dataset && gcpResult.table ? (
+                    <>
+                      <div className="mb-2">
+                        <div className="text-muted mb-1" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em" }}>Billing Table</div>
+                        <code style={{ wordBreak: "break-all", fontSize: 12 }}>{gcpResult.dataset}.{gcpResult.table}</code>
+                      </div>
+                      <div className="text-muted pt-2 border-top" style={{ fontSize: 12 }}>
+                        GCP Collector will use this table on next restart.
+                      </div>
+                    </>
+                  ) : (
+                    <div className="alert alert-warning py-2 mb-0 mt-2" style={{ fontSize: 12 }}>
+                      <strong>Billing table not found yet.</strong><br />
+                      GCP creates the export table within 24h after enabling Billing Export.
+                      Credentials are saved — re-run Setup once the table appears.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {gcpPhase === "error" && (
+                <div className="alert alert-danger py-2 mb-0" style={{ fontSize: 13 }}>
+                  {gcpFailedStep ? (
+                    <>
+                      <div><strong>Failed step:</strong> {gcpFailedStep.name}</div>
+                      <div><strong>Reason:</strong> {gcpFailedStep.message}</div>
+                    </>
+                  ) : (
+                    <div>{gcpErrorMsg}</div>
+                  )}
+                  <div className="mt-1 text-muted" style={{ fontSize: 12 }}>
+                    Completed steps will be skipped on retry.
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </Modal>

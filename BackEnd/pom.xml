@@ -17,6 +17,18 @@
         <java.version>17</java.version>
         <lombok.version>1.18.34</lombok.version>
     </properties>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.google.cloud</groupId>
+                <artifactId>libraries-bom</artifactId>
+                <version>26.51.0</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -129,6 +141,15 @@
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>costandusagereport</artifactId>
             <version>2.26.30</version>
+        </dependency>
+        <!-- GCP: BigQuery client (GCP Setup — 빌링 테이블 탐색) -->
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-bigquery</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.google.auth</groupId>
+            <artifactId>google-auth-library-oauth2-http</artifactId>
         </dependency>
     </dependencies>
 

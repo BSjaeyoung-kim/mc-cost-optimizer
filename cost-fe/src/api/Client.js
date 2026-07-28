@@ -101,5 +101,8 @@ export const apikeyClient = createClient(
 // CUR 자동 설정 — IAM/S3/CUR 생성 포함하므로 타임아웃 여유
 export const curSetupClient = createClient(`${API_BE_URL}/api/aws/cur`, 90000);
 
+// GCP 자동 설정 — BigQuery 탐색 포함하므로 타임아웃 여유
+export const gcpSetupClient = createClient(`${API_BE_URL}/api/gcp/setup`, 120000);
+
 // Export Mock mode (used in API files)
 export { USE_MOCK };
