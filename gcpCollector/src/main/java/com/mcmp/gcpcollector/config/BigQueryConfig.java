@@ -50,41 +50,32 @@ public class BigQueryConfig {
 
     @Bean
     public BigQuery bigQuery() throws Exception {
-        String credPath = System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
-
         // 크레덴셜 결정: openbao.enabled=true → OpenBao, false → env 우선 후 OpenBao 폴백
         String resolvedProjectId  = credentialResolver.resolve("gcp", "project_id", gcpProjectId);
         String resolvedEmail      = credentialResolver.resolve("gcp", "client_email", clientEmail);
         String resolvedPrivateKey = credentialResolver.resolve("gcp", "private_key", privateKey);
         String resolvedKeyId      = credentialResolver.resolveOptional("gcp", "private_key_id", privateKeyId);
 
-        BigQuery bq;
-
-        if (resolvedEmail != null && !resolvedEmail.isEmpty()
-                && resolvedPrivateKey != null && !resolvedPrivateKey.isEmpty()) {
-            PrivateKey pk = parsePemPrivateKey(resolvedPrivateKey);
-            ServiceAccountCredentials.Builder builder = ServiceAccountCredentials.newBuilder()
-                    .setClientEmail(resolvedEmail)
-                    .setPrivateKey(pk)
-                    .setProjectId(resolvedProjectId);
-            if (resolvedKeyId != null && !resolvedKeyId.isEmpty()) {
-                builder.setPrivateKeyId(resolvedKeyId);
-            }
-            bq = BigQueryOptions.newBuilder()
-                    .setCredentials(builder.build())
-                    .setProjectId(resolvedProjectId)
-                    .build()
-                    .getService();
-            log.info("GCP 인증: 서비스계정 크레덴셜 사용 (CredentialResolver 경유)");
-        } else if (credPath != null && !credPath.isEmpty()) {
-            bq = BigQueryOptions.getDefaultInstance().getService();
-            log.info("GCP 인증: GOOGLE_APPLICATION_CREDENTIALS 파일 사용");
-        } else {
-            log.error("GCP 인증 정보가 없습니다. 다음 중 하나를 설정하세요:");
-            log.error("  방법1(환경변수): GCP_PROJECT_ID, GCP_CLIENT_EMAIL, GCP_PRIVATE_KEY");
-            log.error("  방법2(파일): GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json");
-            throw new IllegalStateException("GCP 인증 환경변수를 설정하세요.");
+        if (resolvedEmail == null || resolvedEmail.isEmpty()
+                || resolvedPrivateKey == null || resolvedPrivateKey.isEmpty()) {
+            log.error("GCP 인증 정보가 없습니다. OpenBao csp/gcp 에 project_id, client_email, private_key 를 등록하세요.");
+            throw new IllegalStateException("GCP 인증 정보가 없습니다.");
         }
+
+        PrivateKey pk = parsePemPrivateKey(resolvedPrivateKey);
+        ServiceAccountCredentials.Builder builder = ServiceAccountCredentials.newBuilder()
+                .setClientEmail(resolvedEmail)
+                .setPrivateKey(pk)
+                .setProjectId(resolvedProjectId);
+        if (resolvedKeyId != null && !resolvedKeyId.isEmpty()) {
+            builder.setPrivateKeyId(resolvedKeyId);
+        }
+        BigQuery bq = BigQueryOptions.newBuilder()
+                .setCredentials(builder.build())
+                .setProjectId(resolvedProjectId)
+                .build()
+                .getService();
+        log.info("GCP 인증: 서비스계정 크레덴셜 사용 (CredentialResolver 경유)");
 
         this.projectId = bq.getOptions().getProjectId();
         log.info("BigQuery 연결 완료 - project: {}", projectId);
