@@ -31,6 +31,12 @@ public class BatchTriggerService {
     @Value("${costopti.ncprightsizer.url}")
     private String ncpRightsizerUrl;
 
+    @Value("${costopti.azurecollector.url}")
+    private String azureCollectorUrl;
+
+    @Value("${costopti.ncpcollector.url}")
+    private String ncpCollectorUrl;
+
     @Value("${costopti.gcpcollector.url}")
     private String gcpCollectorUrl;
 
@@ -57,6 +63,7 @@ public class BatchTriggerService {
         result.put("unused", callGet(azureRightsizerUrl + "/api/batch/azure/unused"));
         result.put("anomaly", callGet(azureRightsizerUrl + "/api/batch/azure/anomaly"));
         result.put("recommend", callGet(azureRightsizerUrl + "/api/batch/azure/recommend"));
+        result.put("budget", callGet(azureCollectorUrl + "/api/admin/budget/check"));
         return result;
     }
 
@@ -65,6 +72,7 @@ public class BatchTriggerService {
         result.put("unused", callGet(ncpRightsizerUrl + "/api/batch/ncp/unused"));
         result.put("anomaly", callGet(ncpRightsizerUrl + "/api/batch/ncp/anomaly"));
         result.put("recommend", callGet(ncpRightsizerUrl + "/api/batch/ncp/recommend"));
+        result.put("budget", callGet(ncpCollectorUrl + "/api/admin/budget/check"));
         return result;
     }
 
