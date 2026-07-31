@@ -55,7 +55,7 @@ public class GcpSetupService {
         log.info("[GcpSetup] ===== AUTO PROVISION START =====");
 
         // Step 1: csp/gcp 어드민 SA 읽기 + 액세스 토큰 발급
-        String[] adminCtx = runStepGet(steps, "어드민 SA 인증", () -> {
+        String[] adminCtx = runStepGet(steps, "Admin SA authentication", () -> {
             Map<String, String> csp = openBaoClient.readCsp("gcp");
             String projectId  = csp.get("project_id");
             String email      = csp.get("client_email");
@@ -79,7 +79,7 @@ public class GcpSetupService {
         String adminToken    = adminCtx[3];
 
         // Step 2: 운영 SA 생성 (이미 존재하면 재사용)
-        String opSaEmail = runStepGet(steps, "운영 SA 생성", () -> {
+        String opSaEmail = runStepGet(steps, "Operator SA creation", () -> {
             String opEmail  = OP_SA_ACCOUNT_ID + "@" + projectId + ".iam.gserviceaccount.com";
             String getUrl   = "https://iam.googleapis.com/v1/projects/" + projectId + "/serviceAccounts/" + opEmail;
             try {
@@ -101,7 +101,7 @@ public class GcpSetupService {
         // Step 3: 운영 SA에 최소 역할 부여 (어드민 SA 사용)
         final String fProjectId = projectId;
         final String fOpEmail   = opSaEmail;
-        if (!runStep(steps, "SA 역할 부여", () -> {
+        if (!runStep(steps, "SA role binding", () -> {
             PrivateKey pk = parsePemPrivateKey(adminKey);
             ServiceAccountCredentials adminCreds = ServiceAccountCredentials.newBuilder()
                     .setClientEmail(adminEmail).setPrivateKey(pk).setProjectId(fProjectId)
@@ -110,7 +110,7 @@ public class GcpSetupService {
         })) return new GcpSetupResult(projectId, null, null, steps);
 
         // Step 4: 운영 SA 키 생성 (IAM 전파 지연 대비 최대 5회 재시도)
-        String opKeyJson = runStepGet(steps, "SA 키 생성", () -> {
+        String opKeyJson = runStepGet(steps, "SA key generation", () -> {
             String keyUrl = "https://iam.googleapis.com/v1/projects/" + fProjectId
                     + "/serviceAccounts/" + fOpEmail + "/keys";
             HttpClientErrorException.NotFound lastErr = null;
@@ -130,7 +130,7 @@ public class GcpSetupService {
         if (opKeyJson == null) return new GcpSetupResult(projectId, null, null, steps);
 
         // Step 5: cost/gcp 에 운영 SA 키 저장 (기존 dataset/confirmed/table 보존)
-        if (!runStep(steps, "OpenBao 저장 (cost/gcp)", () -> {
+        if (!runStep(steps, "Save to OpenBao (cost/gcp)", () -> {
             JsonNode keyNode = MAPPER.readTree(opKeyJson);
             Map<String, String> cost = new HashMap<>(safeRead(() -> openBaoClient.readPath("cost/gcp")));
             cost.put("project_id",   keyNode.path("project_id").asText());
