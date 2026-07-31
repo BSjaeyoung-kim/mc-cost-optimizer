@@ -105,7 +105,7 @@ public class SlackACService {
         }
         try {
             Map<String, String> result = tokenService.retrieveToken("mcmp-user");
-            if (result == null || result.get("token") == null || result.get("channel") == null) {
+            if (result == null || isBlank(result.get("token")) || isBlank(result.get("channel"))) {
                 log.warn("Slack 토큰 미등록 - 슬랙 발송 스킵 (resource_id: {})", costOptiAlarmReqModel.getResource_id());
                 commonService.insertSlackHistory(slackFormModel);
                 return;
@@ -165,6 +165,9 @@ public class SlackACService {
 
         try {
             Map<String, String> result = tokenService.retrieveToken(userId);
+            if (result == null || isBlank(result.get("token")) || isBlank(result.get("channel"))) {
+                throw new IllegalStateException("Slack 토큰이 등록되지 않았습니다.");
+            }
 
             ChatPostMessageRequest request = ChatPostMessageRequest.builder()
                     .channel(result.get("channel"))
@@ -191,5 +194,9 @@ public class SlackACService {
 
     public Map<String, String> getSlackToken(String userId) throws Exception {
         return tokenService.retrieveToken(userId);
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 }
