@@ -196,7 +196,7 @@ export default function CspSettingModal({ open, onClose }) {
       } else {
         const d = await fetchGcpStatus();
         if (d?.stage === "WAITING_TABLE") {
-          setGcpTableCheckMsg("Table not found yet. It may take up to 24 hours after billing export is configured.");
+          setGcpTableCheckMsg("Table not found yet. It may take up to 3 days after billing export is configured.");
         }
       }
     } catch {
@@ -585,6 +585,12 @@ export default function CspSettingModal({ open, onClose }) {
                   <><br /><button className="btn btn-link p-0" style={{ fontSize: 11 }} onClick={() => setGcpEditDataset(true)}>Change dataset</button></>
                 )}
               </p>
+              <ol style={{ fontSize: 12, lineHeight: 1.9, color: "#444", paddingLeft: 18 }}>
+                <li>In GCP Console, search for <strong>"billing export"</strong> in the search bar.</li>
+                <li>Select <strong>Standard data (usage cost) export</strong>.</li>
+                <li>Choose the dataset you just created (<code style={{ fontSize: 11 }}>{gcpDatasetName}</code>) as the export target.</li>
+                <li>Click <strong>Save</strong>.</li>
+              </ol>
               <div className="alert alert-warning py-2 mb-0" style={{ fontSize: 12 }}>
                 ⚠ It may take up to <strong>3 days</strong> for the billing table to be created after enabling billing export.
               </div>
@@ -618,7 +624,7 @@ export default function CspSettingModal({ open, onClose }) {
                 <div style={{ fontSize: 28, marginBottom: 8 }}>⏳</div>
                 <div className="fw-semibold mb-1">Waiting for billing table</div>
                 <div className="text-muted" style={{ fontSize: 12 }}>
-                  GCP will automatically create the table within 24 hours after billing export is configured.<br />
+                  GCP will automatically create the table within 3 days after billing export is configured.<br />
                   Auto-detected daily at 09:00. You can also check now.
                 </div>
               </div>
