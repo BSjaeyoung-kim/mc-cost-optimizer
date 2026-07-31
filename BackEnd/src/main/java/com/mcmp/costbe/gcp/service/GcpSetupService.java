@@ -129,33 +129,19 @@ public class GcpSetupService {
         });
         if (opKeyJson == null) return new GcpSetupResult(projectId, null, null, steps);
 
-        // Step 5: 기본 데이터셋 생성 (어드민 SA 사용 — IAM 전파 지연 없음)
-        runStep(steps, "BigQuery 데이터셋 생성", () -> {
-            BigQuery bq = buildBigQuery(fProjectId, adminEmail, adminKey);
-            DatasetId dsId = DatasetId.of(fProjectId, OP_DATASET_DEFAULT);
-            if (bq.getDataset(dsId) == null) {
-                bq.create(DatasetInfo.newBuilder(dsId).setLocation(DATASET_LOCATION).build());
-                log.info("[GcpSetup] 데이터셋 생성 완료: {}", OP_DATASET_DEFAULT);
-            } else {
-                log.info("[GcpSetup] 데이터셋 이미 존재: {}", OP_DATASET_DEFAULT);
-            }
-        });
-
-        // Step 6: cost/gcp 에 운영 SA 키 + 데이터셋 저장 (기존 confirmed/table 보존)
+        // Step 5: cost/gcp 에 운영 SA 키 저장 (기존 dataset/confirmed/table 보존)
         if (!runStep(steps, "OpenBao 저장 (cost/gcp)", () -> {
             JsonNode keyNode = MAPPER.readTree(opKeyJson);
             Map<String, String> cost = new HashMap<>(safeRead(() -> openBaoClient.readPath("cost/gcp")));
             cost.put("project_id",   keyNode.path("project_id").asText());
             cost.put("client_email", keyNode.path("client_email").asText());
             cost.put("private_key",  keyNode.path("private_key").asText());
-            cost.putIfAbsent("dataset",        OP_DATASET_DEFAULT);
-            cost.putIfAbsent("dataset_action", "create");
             openBaoClient.writePath("cost/gcp", cost);
             log.info("[GcpSetup] 운영 SA 저장 완료: {}", keyNode.path("client_email").asText());
-        })) return new GcpSetupResult(projectId, OP_DATASET_DEFAULT, null, steps);
+        })) return new GcpSetupResult(projectId, null, null, steps);
 
         log.info("[GcpSetup] ===== AUTO PROVISION COMPLETE =====");
-        return new GcpSetupResult(projectId, OP_DATASET_DEFAULT, null, steps);
+        return new GcpSetupResult(projectId, null, null, steps);
     }
 
     // ──────────────────────────────────────────────────────────────────────────
