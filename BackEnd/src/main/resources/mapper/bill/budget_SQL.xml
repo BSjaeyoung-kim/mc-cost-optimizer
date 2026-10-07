@@ -106,12 +106,42 @@
                          AND n1.contract_no = n2.contract_no
                          AND n1.demand_month = n2.demand_month
                          AND n1.write_date = n2.latest_write_date
+                         AND n1.resource_type != 'OBJECT_STORAGE'  -- Object Storage 는 계정 단위 블록(D-4)에서 집계
                       ) rs_latest
                 INNER JOIN servicegroup_meta sm
                    ON rs_latest.resource_id COLLATE utf8mb4_unicode_ci = sm.csp_instanceid COLLATE utf8mb4_unicode_ci
                   AND sm.csp_type = 'NCP'
                   AND sm.service_cd = #{projectId}
                 GROUP BY rs_latest.demand_month
+
+               UNION ALL
+
+               -- D-4: NCP Object Storage — 계정 단위 계약(OBJST) 행, 최신 누적 스냅샷, Tumblebug OBJECT_STORAGE 메타가 있을 때만 1회 포함
+               SELECT nro.demand_month COLLATE utf8mb4_unicode_ci   AS yearMonth,
+                      SUM(nro.demand_amount) / ${krwPerUsd}          AS bill
+                 FROM (
+                      SELECT o1.resource_id, o1.resource_type, o1.member_no, o1.demand_month, o1.demand_amount
+                        FROM ncp_cost_resource_month o1
+                       INNER JOIN (
+                             SELECT demand_month, resource_id, demand_type_detail_code, contract_no, MAX(write_date) AS latest_write_date
+                               FROM ncp_cost_resource_month
+                              WHERE demand_month >= CONCAT(#{year}, '01')
+                                AND demand_month <= CONCAT(#{year}, '12')
+                                AND resource_type = 'OBJECT_STORAGE'
+                              GROUP BY demand_month, resource_id, demand_type_detail_code, contract_no
+                             ) o2
+                       ON o1.demand_month = o2.demand_month
+                      AND o1.resource_id = o2.resource_id
+                      AND o1.demand_type_detail_code = o2.demand_type_detail_code
+                      AND o1.contract_no = o2.contract_no
+                      AND o1.write_date = o2.latest_write_date
+                      ) nro
+                 WHERE nro.resource_type = 'OBJECT_STORAGE'
+                   AND EXISTS (SELECT 1 FROM servicegroup_meta smo
+                                WHERE smo.csp_type = 'NCP' AND smo.service_type = 'OBJECT_STORAGE'
+                                AND smo.service_cd = #{projectId}
+                              )
+                 GROUP BY nro.demand_month
                ) ncp_data
          GROUP BY ncp_data.yearMonth
 
@@ -143,9 +173,26 @@
                 INNER JOIN servicegroup_meta sm
                    ON LOWER(acr.resource_id) COLLATE utf8mb4_unicode_ci = LOWER(sm.csp_instanceid) COLLATE utf8mb4_unicode_ci
                   AND sm.csp_type = 'AZURE'
+                  AND acr.resource_type != 'OBJECT_STORAGE'  -- Object Storage 는 계정 단위 블록(D-4)에서 집계
                   AND sm.service_cd = #{projectId}
                 WHERE acr.usage_date >= CONCAT(#{year}, '0101')
                   AND acr.usage_date <= CONCAT(#{year}, '1231')
+                GROUP BY DATE_FORMAT(acr.usage_date, '%Y%m')
+
+               UNION ALL
+
+               -- D-4: Azure Object Storage — Storage Account 단위 행(계정 매핑 ${azureObjStgAccounts}), Tumblebug OBJECT_STORAGE 메타가 있을 때만 1회 포함
+               SELECT DATE_FORMAT(acr.usage_date, '%Y%m') COLLATE utf8mb4_unicode_ci AS yearMonth,
+                      SUM(acr.pre_tax_cost) / ${krwPerUsd}                            AS bill
+                 FROM azure_cost_resource_daily acr
+                WHERE acr.resource_type = 'OBJECT_STORAGE'
+                  AND LOWER(acr.resource_name) IN (${azureObjStgAccounts})
+                  AND acr.usage_date >= CONCAT(#{year}, '0101')
+                  AND acr.usage_date <= CONCAT(#{year}, '1231')
+                  AND EXISTS (SELECT 1 FROM servicegroup_meta smo
+                               WHERE smo.csp_type = 'AZURE' AND smo.service_type = 'OBJECT_STORAGE'
+                              AND smo.service_cd = #{projectId}
+                             )
                 GROUP BY DATE_FORMAT(acr.usage_date, '%Y%m')
                ) az_data
          GROUP BY az_data.yearMonth

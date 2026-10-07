@@ -63,6 +63,7 @@ services:
       costopti.costcollector.url: ${CO_COST_COLLECTOR_URL}
       costopti.costprocessor.url: ${CO_COST_PROCESSOR_URL}
       costopti.costselector.url: ${CO_COST_SELECTOR_URL}
+      costopti.objstorage.azure.storage-accounts: ${CO_AZURE_OBJSTG_STORAGE_ACCOUNTS}
       TZ: Asia/Seoul
     healthcheck:
       test: ["CMD", "/app/tool/mcc", "rest", "get", "http://localhost:9090/api/costopti/be/readyz"]
