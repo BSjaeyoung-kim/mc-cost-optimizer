@@ -3,7 +3,7 @@
 <mapper namespace="tbb">
     <insert id="insertTBBServicegroupMeta" parameterType="java.util.List">
         INSERT INTO servicegroup_meta(csp_type, csp_account, csp_instanceid, service_cd, service_nm, service_uid
-        , service_type, vm_id, vm_uid, vm_nm, mci_id, mci_uid, mci_nm, instance_running_status)
+        , service_type, workspace_cd, vm_id, vm_uid, vm_nm, mci_id, mci_uid, mci_nm, instance_running_status)
         VALUES
         <foreach collection="list" item="item" separator=",">
             (#{item.cspType}
@@ -13,6 +13,7 @@
                , #{item.serviceNm}
                , #{item.serviceUid}
                , #{item.serviceType}
+               , COALESCE(#{item.workspaceCd}, 'undefined')
                , #{item.vmId}
                , #{item.vmUid}
                , #{item.vmNm}
@@ -21,9 +22,21 @@
                , #{item.mciNm}
                , #{item.instanceRunningStatus})
         </foreach>
-            ON DUPLICATE KEY UPDATE service_nm = values(service_nm)
+            <!--
+              Tumblebug 메타가 자원 소속(namespace)의 기준. costCollector의 insertRscGrpMeta가 CUR의 모든 resource id를
+              service_cd='undefined'로 선삽입하므로, 여기서 service_cd/계정/식별자까지 갱신해야 이후 동기화에서 교정된다.
+              (collector 쪽 upsert는 csp_instanceid만 갱신하므로 Tumblebug 값을 덮어쓰지 않는다)
+            -->
+            ON DUPLICATE KEY UPDATE csp_account = values(csp_account)
+                                 , service_cd = values(service_cd)
+                                 , service_nm = values(service_nm)
                                  , service_type = values(service_type)
+                                 , workspace_cd = values(workspace_cd)
+                                 , vm_id = values(vm_id)
+                                 , vm_uid = values(vm_uid)
                                  , vm_nm = values(vm_nm)
+                                 , mci_id = values(mci_id)
+                                 , mci_uid = values(mci_uid)
                                  , mci_nm = values(mci_nm)
                                  , instance_running_status = values(instance_running_status)
     </insert>

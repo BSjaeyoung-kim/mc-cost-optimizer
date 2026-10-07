@@ -5,6 +5,8 @@ import com.mcmp.costbe.tumblebugMeta.model.ResourcegroupMetaModel;
 import com.mcmp.costbe.tumblebugMeta.model.k8s.K8sClusterItemModel;
 import com.mcmp.costbe.tumblebugMeta.model.k8s.K8sClusterListModel;
 import com.mcmp.costbe.tumblebugMeta.model.mci.TBBMCIItemModel;
+import com.mcmp.costbe.tumblebugMeta.model.objectStorage.ObjectStorageItemModel;
+import com.mcmp.costbe.tumblebugMeta.model.objectStorage.ObjectStorageListModel;
 import com.mcmp.costbe.tumblebugMeta.model.mci.TBBMCIModel;
 import com.mcmp.costbe.tumblebugMeta.model.mci.TbInfraNodeModel;
 import com.mcmp.costbe.tumblebugMeta.model.mci.TbInfraNodeSpecModel;
@@ -335,6 +337,51 @@ public class VMMetaService {
         }
     }
 
+    /**
+     * GET /ns/{nsId}/resources/objectStorage — Tumblebug이 관리하는 Object Storage(버킷) 목록.
+     * K8s/VM 수집과 달리 실패를 치명적으로 보지 않는다: 404(미지원 Tumblebug 버전)·오류 시 빈 목록을 반환해
+     * 기존 VM/K8s 메타 동기화가 중단되지 않게 한다.
+     */
+    public List<ObjectStorageItemModel> getTBBObjectStorages(TBBNSItemModel item){
+
+        if(item == null){
+            log.error("[ERROR] : GET TUMBLEBUG META - OBJECT STORAGE => NS IS EMPTY");
+            return new ArrayList<>();
+        }
+
+        String apiUrl = String.format("%s/ns/%s/resources/objectStorage", tumblebugUrl, item.getId());
+        RestTemplate restTemplate = new RestTemplate();
+
+        String auth = tumblebugUserNM + ":" + tumblebugPW;
+        byte[] encodedAuth = Base64.getEncoder().encode(auth.getBytes(StandardCharsets.UTF_8));
+        String authHeader = "Basic " + new String(encodedAuth);
+
+        HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.set("Authorization", authHeader);
+        HttpEntity<?> httpEntity = new HttpEntity<>(httpHeaders);
+
+        try{
+            ResponseEntity<ObjectStorageListModel> responseEntity = restTemplate.exchange(apiUrl, HttpMethod.GET, httpEntity, ObjectStorageListModel.class);
+            ObjectStorageListModel response = responseEntity.getBody();
+
+            if(response != null && response.getObjectStorages() != null && !response.getObjectStorages().isEmpty()){
+                return response.getObjectStorages();
+            }else{
+                log.info("TUMBLEBUG META - OBJECT STORAGE => EMPTY => ns : {}", item.getId());
+                return new ArrayList<>();
+            }
+        } catch (HttpClientErrorException.NotFound notFound) {
+            log.warn("TUMBLEBUG META - OBJECT STORAGE => endpoint not found (Tumblebug version may not support object storage) => NS ID : {}", item.getId());
+            return new ArrayList<>();
+        } catch (HttpClientErrorException | HttpServerErrorException clientError) {
+            log.error("FAIL TO GET TUMBLEBUG META - OBJECT STORAGE => NS ID : {}, error code : {}", item.getId(), clientError.getStatusCode());
+            return new ArrayList<>();
+        } catch (Exception e){
+            log.error("FAIL TO GET TUMBLEBUG META - OBJECT STORAGE => NS ID : {}, error : {}", item.getId(), e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
     public TbVmInfoModel getTBBVM(TBBNSItemModel item, TBBMCIItemModel mci, TbVmInfoModel vm){
 
         if(vm != null){
@@ -547,23 +594,34 @@ public class VMMetaService {
                                 k8sStatus = "Y";
                             }
 
-                            // CSP 타입 및 계정 정보
+                            // CSP 타입
                             String cspType = cluster.getConnectionConfig() != null ?
                                 cluster.getConnectionConfig().getProviderName().toUpperCase() : "UNKNOWN";
-                            String cspAccount = cluster.getConnectionName() != null ?
-                                cluster.getConnectionName() : "mcmpcostopti";
+
+                            // 과금 데이터 매칭 키 정규화: AWS EKS는 CUR이 ARN을 쓰므로 keyValueList의 Arn으로 치환,
+                            // 그 외 CSP는 cspResourceId 그대로(Azure=ARM ID, GCP=클러스터명, NCP=UUID)
+                            String instanceId = TbbResourceIdResolver.k8sInstanceId(
+                                    cspType, cluster.getCspResourceId(), cluster.getKeyValueList());
+                            // 계정: AWS=ARN의 account, AZURE=subscription, GCP=SelfLink의 project, 그 외=connectionName
+                            String cspAccount = TbbResourceIdResolver.k8sAccount(
+                                    cspType, instanceId, cluster.getKeyValueList(), cluster.getConnectionName());
+
+                            if(!instanceId.equals(cluster.getCspResourceId())) {
+                                log.info("K8s cluster {} ({}): csp_instanceid normalized {} -> {}",
+                                        cluster.getId(), cspType, cluster.getCspResourceId(), instanceId);
+                            }
 
                             ResourcegroupMetaModel k8sInfo = ResourcegroupMetaModel.builder()
                                     .cspType(cspType)
                                     .cspAccount(cspAccount)
-                                    .cspInstanceid(cluster.getCspResourceId())
+                                    .cspInstanceid(instanceId)
                                     .serviceCd(ns.getId())
                                     .serviceNm(ns.getName())
                                     .serviceType("K8S")
                                     .workspaceCd("ws1")  // TODO: 추후 동적으로 변경 필요
                                     .vmId(cluster.getId())
-                                    .vmUid(cluster.getCspResourceName())
-                                    .vmNm(cluster.getId())
+                                    .vmUid(cluster.getUid())
+                                    .vmNm(cluster.getName() != null ? cluster.getName() : cluster.getId())
                                     .mciId(null)
                                     .mciUid(null)
                                     .mciNm(null)
@@ -583,6 +641,61 @@ public class VMMetaService {
                     log.error("Failed to process K8s clusters for namespace: {}, error: {}", ns.getId(), e.getMessage());
                     e.printStackTrace();
                     throw new RuntimeException();
+                }
+            }
+
+            // Object Storage(버킷) 처리 — service_type = 'OBJECT_STORAGE', csp_instanceid = CSP측 버킷명
+            Thread.sleep(2000);
+            List<ObjectStorageItemModel> osList = getTBBObjectStorages(ns);
+
+            if(osList != null && !osList.isEmpty()){
+                List<ResourcegroupMetaModel> osMetaList = new ArrayList<>();
+
+                for(ObjectStorageItemModel os : osList){
+                    if(os == null) continue;
+
+                    String instanceId = TbbResourceIdResolver.objectStorageInstanceId(
+                            os.getCspResourceId(), os.getCspResourceName(), os.getName());
+                    if(instanceId == null){
+                        log.warn("Object storage {} in ns {} has no usable identifier, skipped", os.getId(), ns.getId());
+                        continue;
+                    }
+
+                    String cspType = os.getConnectionConfig() != null && os.getConnectionConfig().getProviderName() != null ?
+                        os.getConnectionConfig().getProviderName().toUpperCase() : "UNKNOWN";
+                    String cspAccount = os.getConnectionName() != null ? os.getConnectionName() : "mcmpcostopti";
+
+                    String osStatus = switch (os.getStatus() == null ? "" : os.getStatus()) {
+                        case "Deleting", "Failed", "Error", "Inactive", "Deactive" -> "N";
+                        default -> "Y";
+                    };
+
+                    osMetaList.add(ResourcegroupMetaModel.builder()
+                            .cspType(cspType)
+                            .cspAccount(cspAccount)
+                            .cspInstanceid(instanceId)
+                            .serviceCd(ns.getId())
+                            .serviceNm(ns.getName())
+                            .serviceType("OBJECT_STORAGE")
+                            .workspaceCd("ws1")  // TODO: 추후 동적으로 변경 필요
+                            .vmId(os.getId())
+                            .vmUid(os.getUid())
+                            .vmNm(os.getName() != null ? os.getName() : os.getId())
+                            .mciId(null)
+                            .mciUid(null)
+                            .mciNm(null)
+                            .instanceRunningStatus(osStatus)
+                            .build());
+                }
+
+                if(!osMetaList.isEmpty()){
+                    try{
+                        tbbDao.insertTBBServicegroupMeta(osMetaList);
+                        log.info("Inserted {} object storages for namespace: {}", osMetaList.size(), ns.getId());
+                    } catch (Exception e){
+                        // 버킷 적재 실패는 VM/K8s 동기화 결과를 되돌리지 않는다
+                        log.error("Failed to insert object storage meta for namespace: {}, error: {}", ns.getId(), e.getMessage());
+                    }
                 }
             }
         }
