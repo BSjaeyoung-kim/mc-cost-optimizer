@@ -66,11 +66,33 @@ public final class TbbResourceIdResolver {
         return fallback;
     }
 
-    /** Object Storage의 과금 매칭 키 = CSP측 버킷명. cspResourceId → cspResourceName → name 순으로 폴백. */
-    public static String objectStorageInstanceId(String cspResourceId, String cspResourceName, String name) {
+    /**
+     * Object Storage의 과금 매칭 키 = CSP측 버킷/컨테이너 이름.
+     * Tumblebug은 사용자가 준 name이 아니라 자기 uid를 CSP 버킷명으로 생성하고(cb-tumblebug resource/object_storage.go),
+     * 생성 완료 후 cspResourceId = cb-spider SystemId = uid 를 채운다. 따라서
+     * cspResourceId → uid → cspResourceName(= NameId = uid) 순으로 폴백하고, 사용자 name은 CSP 식별자가 아니므로 쓰지 않는다.
+     * (Creating/Failed 상태에서는 cspResourceId가 비어 있을 수 있는데, 그때 name을 쓰면 나중에 uid 행과 중복되는 죽은 행이 생긴다)
+     */
+    public static String objectStorageInstanceId(String cspResourceId, String uid, String cspResourceName) {
         if (!isBlank(cspResourceId)) return cspResourceId;
-        if (!isBlank(cspResourceName)) return cspResourceName;
-        return isBlank(name) ? null : name;
+        if (!isBlank(uid)) return uid;
+        return isBlank(cspResourceName) ? null : cspResourceName;
+    }
+
+    /**
+     * connectionConfig.providerName이 비어 있을 때의 CSP 판별 폴백.
+     * Tumblebug 기본 연결 이름은 "{provider}-{region}" (예: aws-ap-northeast-2, azure-koreacentral, gcp-asia-northeast3, ncp-kr).
+     * 아는 provider 접두사면 대문자 CSP 코드를, 아니면 null 을 돌려준다.
+     */
+    public static String cspTypeFromConnectionName(String connectionName) {
+        if (isBlank(connectionName)) return null;
+        String prefix = connectionName.split("-", 2)[0].trim().toUpperCase();
+        switch (prefix) {
+            case "AWS": case "AZURE": case "GCP": case "NCP":
+                return prefix;
+            default:
+                return null;
+        }
     }
 
     /** keyValueList([{key, value}])에서 key(대소문자 무시)에 해당하는 value. 없으면 null. */

@@ -654,15 +654,23 @@ public class VMMetaService {
                 for(ObjectStorageItemModel os : osList){
                     if(os == null) continue;
 
+                    // CSP측 버킷명 = Tumblebug uid (cspResourceId는 생성 완료 후 채워지므로 uid로 폴백)
                     String instanceId = TbbResourceIdResolver.objectStorageInstanceId(
-                            os.getCspResourceId(), os.getCspResourceName(), os.getName());
+                            os.getCspResourceId(), os.getUid(), os.getCspResourceName());
                     if(instanceId == null){
                         log.warn("Object storage {} in ns {} has no usable identifier, skipped", os.getId(), ns.getId());
                         continue;
                     }
 
-                    String cspType = os.getConnectionConfig() != null && os.getConnectionConfig().getProviderName() != null ?
-                        os.getConnectionConfig().getProviderName().toUpperCase() : "UNKNOWN";
+                    String cspType = os.getConnectionConfig() != null && os.getConnectionConfig().getProviderName() != null
+                            && !os.getConnectionConfig().getProviderName().isBlank()
+                        ? os.getConnectionConfig().getProviderName().toUpperCase()
+                        : TbbResourceIdResolver.cspTypeFromConnectionName(os.getConnectionName());
+                    if(cspType == null){
+                        // csp_type 은 PK 의 일부이자 모든 집계의 분기 키 — 알 수 없는 값(UNKNOWN)으로 적재하면 어느 CSP 에도 안 잡히는 죽은 행이 된다
+                        log.warn("Object storage {} in ns {} has no resolvable CSP (connection {}), skipped", os.getId(), ns.getId(), os.getConnectionName());
+                        continue;
+                    }
                     String cspAccount = os.getConnectionName() != null ? os.getConnectionName() : "mcmpcostopti";
 
                     String osStatus = switch (os.getStatus() == null ? "" : os.getStatus()) {
