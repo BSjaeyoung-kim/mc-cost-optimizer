@@ -52,6 +52,9 @@ public class VMMetaService {
     private TBBDao tbbDao;
 
     // Retry tuning for the 2 req/sec rate limit on Tumblebug's node-spec endpoint.
+    /** servicegroup_meta 의 NOT NULL 컬럼(vm_id, mci_id) 기본값. 값이 없는 행(K8s 의 MCI 등)에 사용 */
+    private static final String META_UNDEFINED = "undefined";
+
     private static final int TBB_SPEC_MAX_RETRIES = 4;
     private static final long TBB_SPEC_BACKOFF_BASE_MS = 300L;
     private static final long TBB_SPEC_BACKOFF_JITTER_MS = 200L;
@@ -649,10 +652,12 @@ public class VMMetaService {
                                 .serviceNm(ns.getName())
                                 .serviceType("K8S")
                                 .workspaceCd("ws1")  // TODO: 추후 동적으로 변경 필요
-                                .vmId(cluster.getId())
+                                // 서버 DB의 servicegroup_meta 는 vm_id·mci_id 가 NOT NULL(기본값 'undefined')이라
+                                // NULL 을 넣으면 INSERT 가 거절된다. K8s 행은 MCI 가 없으므로 기본값과 같은 'undefined' 로 채운다.
+                                .vmId(cluster.getId() != null ? cluster.getId() : META_UNDEFINED)
                                 .vmUid(cluster.getUid())
                                 .vmNm(cluster.getName() != null ? cluster.getName() : cluster.getId())
-                                .mciId(null)
+                                .mciId(META_UNDEFINED)
                                 .mciUid(null)
                                 .mciNm(null)
                                 .instanceRunningStatus(k8sStatus)
