@@ -24,9 +24,13 @@ import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.nio.charset.StandardCharsets;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -298,6 +302,11 @@ public class VMMetaService {
         }
     }
 
+    /**
+     * GET /ns/{nsId}/k8sCluster — Tumblebug이 관리하는 K8s 클러스터 목록.
+     * Object Storage와 마찬가지로 실패를 치명적으로 보지 않는다: 404(미지원 Tumblebug 버전)·타임아웃·5xx 시
+     * 빈 목록을 반환해, 해당 ns의 Object Storage와 이후 ns의 VM/K8s/Object Storage 메타 동기화가 계속되게 한다.
+     */
     public List<K8sClusterItemModel> getTBBK8sClusters(TBBNSItemModel item){
 
         if(item != null){
@@ -322,13 +331,16 @@ public class VMMetaService {
                     log.warn("TUMBLEBUG META - K8S => CLUSTERS IS EMPTY => ns : {}, response : {}", item.getId(), response);
                     return new ArrayList<>();
                 }
+            } catch (HttpClientErrorException.NotFound notFound) {
+                log.warn("TUMBLEBUG META - K8S => endpoint not found (Tumblebug version may not support k8sCluster) => NS ID : {}", item.getId());
+                return new ArrayList<>();
             } catch (HttpClientErrorException | HttpServerErrorException clientError) {
                 HttpStatus statusCode = clientError.getStatusCode();
                 log.error("FAIL TO GET TUMBLEBUG META - K8S => NS ID : {}, error code : {}", item.getId(), statusCode);
-                throw new RuntimeException();
+                return new ArrayList<>();
             } catch (Exception e){
                 log.error("FAIL TO GET TUMBLEBUG META - K8S => NS ID : {}, error : {}", item.getId(), e.getMessage());
-                throw new RuntimeException();
+                return new ArrayList<>();
             }
 
         } else {
@@ -572,76 +584,87 @@ public class VMMetaService {
             List<K8sClusterItemModel> k8sList = getTBBK8sClusters(ns);
 
             if(k8sList != null && !k8sList.isEmpty()){
-                try{
-                    List<ResourcegroupMetaModel> k8sMetaList = new ArrayList<>();
+                List<ResourcegroupMetaModel> k8sMetaList = new ArrayList<>();
 
-                    for(K8sClusterItemModel cluster : k8sList){
-                        if(cluster != null && cluster.getCspResourceId() != null){
+                for(K8sClusterItemModel cluster : k8sList){
+                    if(cluster == null || cluster.getCspResourceId() == null) continue;
 
-                            // K8s 클러스터 상태 처리
-                            String k8sStatus;
-                            if(cluster.getStatus() != null && !cluster.getStatus().isEmpty()){
-                                k8sStatus = switch (cluster.getStatus()){
-                                    case "Active" -> "Y";
-                                    case "Failed", "Deactive", "Inactive", "Error" -> "N";
-                                    default -> {
-                                        log.warn("Unknown K8s cluster status: {} for cluster: {}, defaulting to Y",
-                                            cluster.getStatus(), cluster.getId());
-                                        yield "Y";
-                                    }
-                                };
-                            }else {
-                                k8sStatus = "Y";
-                            }
-
-                            // CSP 타입
-                            String cspType = cluster.getConnectionConfig() != null ?
-                                cluster.getConnectionConfig().getProviderName().toUpperCase() : "UNKNOWN";
-
-                            // 과금 데이터 매칭 키 정규화: AWS EKS는 CUR이 ARN을 쓰므로 keyValueList의 Arn으로 치환,
-                            // 그 외 CSP는 cspResourceId 그대로(Azure=ARM ID, GCP=클러스터명, NCP=UUID)
-                            String instanceId = TbbResourceIdResolver.k8sInstanceId(
-                                    cspType, cluster.getCspResourceId(), cluster.getKeyValueList());
-                            // 계정: AWS=ARN의 account, AZURE=subscription, GCP=SelfLink의 project, 그 외=connectionName
-                            String cspAccount = TbbResourceIdResolver.k8sAccount(
-                                    cspType, instanceId, cluster.getKeyValueList(), cluster.getConnectionName());
-
-                            if(!instanceId.equals(cluster.getCspResourceId())) {
-                                log.info("K8s cluster {} ({}): csp_instanceid normalized {} -> {}",
-                                        cluster.getId(), cspType, cluster.getCspResourceId(), instanceId);
-                            }
-
-                            ResourcegroupMetaModel k8sInfo = ResourcegroupMetaModel.builder()
-                                    .cspType(cspType)
-                                    .cspAccount(cspAccount)
-                                    .cspInstanceid(instanceId)
-                                    .serviceCd(ns.getId())
-                                    .serviceNm(ns.getName())
-                                    .serviceType("K8S")
-                                    .workspaceCd("ws1")  // TODO: 추후 동적으로 변경 필요
-                                    .vmId(cluster.getId())
-                                    .vmUid(cluster.getUid())
-                                    .vmNm(cluster.getName() != null ? cluster.getName() : cluster.getId())
-                                    .mciId(null)
-                                    .mciUid(null)
-                                    .mciNm(null)
-                                    .instanceRunningStatus(k8sStatus)
-                                    .build();
-
-                            k8sMetaList.add(k8sInfo);
+                    // 클러스터 1개 처리 실패가 같은 ns의 다른 클러스터 적재를 막지 않게 클러스터 단위로 격리
+                    try{
+                        // CSP 타입: 알 수 없으면 과금 데이터와 매칭될 수 없으므로 적재하지 않는다
+                        if(cluster.getConnectionConfig() == null || cluster.getConnectionConfig().getProviderName() == null){
+                            log.warn("K8s cluster {} in ns {} has no providerName, skipped", cluster.getId(), ns.getId());
+                            continue;
                         }
-                    }
+                        String cspType = cluster.getConnectionConfig().getProviderName().toUpperCase();
 
-                    if(!k8sMetaList.isEmpty()){
-                        tbbDao.insertTBBServicegroupMeta(k8sMetaList);
-                        log.info("Inserted {} K8s clusters for namespace: {}", k8sMetaList.size(), ns.getId());
-                    }
+                        // K8s 클러스터 상태 처리
+                        String k8sStatus;
+                        if(cluster.getStatus() != null && !cluster.getStatus().isEmpty()){
+                            k8sStatus = switch (cluster.getStatus()){
+                                case "Active" -> "Y";
+                                case "Failed", "Deactive", "Inactive", "Error" -> "N";
+                                default -> {
+                                    log.warn("Unknown K8s cluster status: {} for cluster: {}, defaulting to Y",
+                                        cluster.getStatus(), cluster.getId());
+                                    yield "Y";
+                                }
+                            };
+                        }else {
+                            k8sStatus = "Y";
+                        }
 
-                } catch (Exception e){
-                    log.error("Failed to process K8s clusters for namespace: {}, error: {}", ns.getId(), e.getMessage());
-                    e.printStackTrace();
-                    throw new RuntimeException();
+                        // 과금 데이터 매칭 키 정규화: AWS EKS는 CUR이 ARN을 쓰므로 keyValueList의 Arn으로 치환,
+                        // 그 외 CSP는 cspResourceId 그대로(Azure=ARM ID, GCP=클러스터명, NCP=UUID)
+                        String instanceId = TbbResourceIdResolver.k8sInstanceId(
+                                cspType, cluster.getCspResourceId(), cluster.getKeyValueList());
+                        // AWS인데 Tumblebug 응답에 Arn이 없으면(생성 중이거나 CB-Spider 버전 차이) CUR에서 같은 클러스터의 ARN을 찾는다.
+                        // 못 찾으면 클러스터 이름으로 저장되어 CUR과 매칭되지 않으므로 경고를 남긴다.
+                        if("AWS".equals(cspType) && !TbbResourceIdResolver.isEksArn(instanceId)){
+                            String region = cluster.getConnectionConfig().getRegionZoneInfo() != null ?
+                                    cluster.getConnectionConfig().getRegionZoneInfo().getAssignedRegion() : null;
+                            String arnFromCur = findEksArnInCur(region, cluster.getCspResourceId());
+                            if(arnFromCur != null){
+                                log.info("K8s cluster {} (AWS): Arn missing in Tumblebug response, recovered from CUR -> {}", cluster.getId(), arnFromCur);
+                                instanceId = arnFromCur;
+                            }else{
+                                log.warn("K8s cluster {} (AWS): Arn missing in Tumblebug response and not found in CUR (region={}). "
+                                        + "Stored as '{}', which will not match CUR until the ARN is available", cluster.getId(), region, instanceId);
+                            }
+                        }
+                        // 계정: AWS=ARN의 account, AZURE=subscription, GCP=SelfLink의 project, 그 외=connectionName
+                        String cspAccount = TbbResourceIdResolver.k8sAccount(
+                                cspType, instanceId, cluster.getKeyValueList(), cluster.getConnectionName());
+
+                        if(!instanceId.equals(cluster.getCspResourceId())) {
+                            log.info("K8s cluster {} ({}): csp_instanceid normalized {} -> {}",
+                                    cluster.getId(), cspType, cluster.getCspResourceId(), instanceId);
+                        }
+
+                        ResourcegroupMetaModel k8sInfo = ResourcegroupMetaModel.builder()
+                                .cspType(cspType)
+                                .cspAccount(cspAccount)
+                                .cspInstanceid(instanceId)
+                                .serviceCd(ns.getId())
+                                .serviceNm(ns.getName())
+                                .serviceType("K8S")
+                                .workspaceCd("ws1")  // TODO: 추후 동적으로 변경 필요
+                                .vmId(cluster.getId())
+                                .vmUid(cluster.getUid())
+                                .vmNm(cluster.getName() != null ? cluster.getName() : cluster.getId())
+                                .mciId(null)
+                                .mciUid(null)
+                                .mciNm(null)
+                                .instanceRunningStatus(k8sStatus)
+                                .build();
+
+                        k8sMetaList.add(k8sInfo);
+                    } catch (Exception e){
+                        log.error("Failed to build K8s meta for cluster: {} in namespace: {}, skipped", cluster.getId(), ns.getId(), e);
+                    }
                 }
+
+                insertK8sMeta(ns, k8sMetaList);
             }
 
             // Object Storage(버킷) 처리 — service_type = 'OBJECT_STORAGE', csp_instanceid = CSP측 버킷명
@@ -698,6 +721,79 @@ public class VMMetaService {
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * ns 단위 K8s 메타 적재. 일괄 insert가 실패하면(예: 한 행이 컬럼 길이 초과) 행 단위로 다시 넣어
+     * 문제가 된 클러스터만 건너뛴다. 어떤 경우에도 예외를 던지지 않아 이후 Object Storage·다음 ns 처리를 막지 않는다.
+     */
+    private void insertK8sMeta(TBBNSItemModel ns, List<ResourcegroupMetaModel> k8sMetaList){
+        if(k8sMetaList.isEmpty()) return;
+
+        try{
+            tbbDao.insertTBBServicegroupMeta(k8sMetaList);
+            log.info("Inserted {} K8s clusters for namespace: {}", k8sMetaList.size(), ns.getId());
+            k8sMetaList.forEach(this::cleanupStaleAwsK8sMeta);
+            return;
+        } catch (Exception e){
+            log.error("Batch insert of K8s meta failed for namespace: {}, retrying row by row. error: {}", ns.getId(), e.getMessage());
+        }
+
+        int inserted = 0;
+        for(ResourcegroupMetaModel row : k8sMetaList){
+            try{
+                tbbDao.insertTBBServicegroupMeta(List.of(row));
+                inserted++;
+                cleanupStaleAwsK8sMeta(row);
+            } catch (Exception e){
+                log.error("Failed to insert K8s meta: cluster={}, csp_instanceid={}, namespace={}, error: {}",
+                        row.getVmId(), row.getCspInstanceid(), ns.getId(), e.getMessage());
+            }
+        }
+        log.info("Inserted {}/{} K8s clusters for namespace: {} (row by row)", inserted, k8sMetaList.size(), ns.getId());
+    }
+
+    /**
+     * Tumblebug 응답에 Arn이 없는 AWS EKS 클러스터의 ARN을 CUR(이번 달·지난달 tbl_table_billing_detail_YYYYMM)에서 찾는다.
+     * 후보가 정확히 1개일 때만 반환하고, 없거나 여러 개(같은 이름의 클러스터가 다른 계정/리전에 있음)면 null.
+     * 조회 실패는 메타 동기화를 막지 않도록 null로 처리한다.
+     */
+    private String findEksArnInCur(String region, String clusterName){
+        String pattern = TbbResourceIdResolver.eksArnLikePattern(region, clusterName);
+        if(pattern == null) return null;
+
+        Set<String> candidates = new LinkedHashSet<>();
+        YearMonth now = YearMonth.now();
+        DateTimeFormatter yyyyMM = DateTimeFormatter.ofPattern("yyyyMM");
+        for(YearMonth ym : List.of(now, now.minusMonths(1))){
+            String yearMonth = ym.format(yyyyMM);
+            try{
+                if(!tbbDao.existsTable("tbl_table_billing_detail_" + yearMonth)) continue;
+                candidates.addAll(tbbDao.selectAwsEksArnsFromCur(yearMonth, pattern));
+            } catch (Exception e){
+                log.warn("Failed to look up EKS ARN in CUR {} for cluster {}: {}", yearMonth, clusterName, e.getMessage());
+            }
+        }
+
+        if(candidates.size() == 1) return candidates.iterator().next();
+        if(candidates.size() > 1){
+            log.warn("Multiple EKS ARNs in CUR match cluster {} (region={}): {}. Not guessing", clusterName, region, candidates);
+        }
+        return null;
+    }
+
+    /** AWS 클러스터가 ARN으로 저장된 뒤, 같은 클러스터의 예전 행(클러스터 이름으로 저장된 K8S 행)을 지운다. 실패해도 무시. */
+    private void cleanupStaleAwsK8sMeta(ResourcegroupMetaModel row){
+        if(!"AWS".equals(row.getCspType()) || !TbbResourceIdResolver.isEksArn(row.getCspInstanceid())) return;
+        try{
+            int deleted = tbbDao.deleteStaleAwsK8sMeta(row);
+            if(deleted > 0){
+                log.info("Removed {} stale AWS K8s meta row(s) for cluster {} in namespace {} (replaced by {})",
+                        deleted, row.getVmId(), row.getServiceCd(), row.getCspInstanceid());
+            }
+        } catch (Exception e){
+            log.warn("Failed to remove stale AWS K8s meta for cluster {}: {}", row.getVmId(), e.getMessage());
         }
     }
 
