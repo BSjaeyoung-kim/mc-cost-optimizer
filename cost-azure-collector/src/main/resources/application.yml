@@ -58,6 +58,8 @@ azure-schedule:
   #  vm-batch-cron: ${AZURE_VM_BATCH_CRON_SCHEDULE:0 30 0 * * ?}
   service-batch-cron: ${AZURE_SERVICE_BATCH_CRON_SCHEDULE:0 0 0 * * ?}
   vm-batch-cron: ${AZURE_VM_BATCH_CRON_SCHEDULE:0 30 0 * * ?}
+  # 비-VM 자원(AKS, Storage Account) 수집. VM(00:30 UTC) 뒤 15분 — Cost Management 스로틀링 분산
+  resource-batch-cron: ${AZURE_RESOURCE_BATCH_CRON_SCHEDULE:0 45 0 * * ?}
 
 costopti:
   alarmservice:

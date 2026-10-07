@@ -8,6 +8,7 @@ import com.azure.resourcemanager.costmanagement.CostManagementManager;
 import com.azure.resourcemanager.costmanagement.models.QueryDefinition;
 import com.azure.resourcemanager.costmanagement.models.QueryResult;
 import com.mcmp.cost.azure.collector.dto.AzureApiCredentialDto;
+import com.mcmp.cost.azure.collector.entity.AzureCostResourceDaily;
 import com.mcmp.cost.azure.collector.entity.AzureCostServiceDaily;
 import com.mcmp.cost.azure.collector.entity.AzureCostVmDaily;
 import com.mcmp.cost.azure.collector.properties.AzureSslProperties;
@@ -120,5 +121,49 @@ public class AzureCostDailyServiceImpl implements AzureCostDailyService {
             }
         }
         return azureCostVmDailyList;
+    }
+
+    @Override
+    public List<AzureCostResourceDaily> getCostByResources(AzureApiCredentialDto azureApiCredentialDto) {
+        // 0. 인증 생성
+        ClientSecretCredential credential = AzureUtils.buildCredential(azureApiCredentialDto, azureSslProperties.isDisabled());
+
+        // 1. Profile 생성
+        AzureProfile profile = AzureUtils.buildProfile(azureApiCredentialDto);
+
+        // 2. CostManagementManager 생성
+        CostManagementManager costManager = CostManagementManager.authenticate(credential, profile);
+
+        // 3. QueryDefinition 작성 (ResourceType IN (managedclusters, storageaccounts))
+        QueryDefinition query = AzureUtils.getQueryCostByResources();
+
+        // 4. scope 정의
+        String scope = "/subscriptions/" + azureApiCredentialDto.getSubscriptionId();
+
+        // 5. API 호출 — 실패(429/5xx/인증) 시 빈 목록으로 끝내 step 은 성공시키고 다음 날 재시도한다
+        QueryResult queryResult;
+        try {
+            queryResult = costManager
+                    .queries()
+                    .usage(scope, query);
+        } catch (Exception e) {
+            log.error("Azure resource(K8S/Object Storage) cost query failed. subscription={}, reason={}",
+                    azureApiCredentialDto.getSubscriptionId(), e.getMessage(), e);
+            return new ArrayList<>();
+        }
+        if (queryResult.nextLink() != null) {
+            // SDK 1.0.0 은 nextLink 추적 API 가 없다. 필터가 좁아(구독당 AKS/스토리지 계정 수) 한 페이지로 충분하다고 가정하고 경고만 남긴다.
+            log.warn("Azure resource cost query is paged; only the first page is processed. subscription={}, nextLink={}",
+                    azureApiCredentialDto.getSubscriptionId(), queryResult.nextLink());
+        }
+
+        // 6. 매핑 (VM 경로와 달리 getById 조회 없음)
+        List<AzureCostResourceDaily> list = AzureCostResourceRowMapper.toEntities(queryResult, azureApiCredentialDto);
+        log.info("Azure resource cost rows: fetched={}, mapped={}, subscription={}",
+                queryResult.rows() == null ? 0 : queryResult.rows().size(), list.size(), azureApiCredentialDto.getSubscriptionId());
+        for (AzureCostResourceDaily row : list) {
+            log.debug("azureCostResourceDaily data: {}", row);
+        }
+        return list;
     }
 }

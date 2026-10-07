@@ -13,6 +13,7 @@ import com.azure.resourcemanager.costmanagement.models.ExportType;
 import com.azure.resourcemanager.costmanagement.models.FunctionType;
 import com.azure.resourcemanager.costmanagement.models.GranularityType;
 import com.azure.resourcemanager.costmanagement.models.QueryAggregation;
+import com.azure.resourcemanager.costmanagement.models.QueryColumn;
 import com.azure.resourcemanager.costmanagement.models.QueryColumnType;
 import com.azure.resourcemanager.costmanagement.models.QueryComparisonExpression;
 import com.azure.resourcemanager.costmanagement.models.QueryDataset;
@@ -20,6 +21,7 @@ import com.azure.resourcemanager.costmanagement.models.QueryDefinition;
 import com.azure.resourcemanager.costmanagement.models.QueryFilter;
 import com.azure.resourcemanager.costmanagement.models.QueryGrouping;
 import com.azure.resourcemanager.costmanagement.models.QueryOperatorType;
+import com.azure.resourcemanager.costmanagement.models.QueryResult;
 import com.azure.resourcemanager.costmanagement.models.QueryTimePeriod;
 import com.azure.resourcemanager.costmanagement.models.TimeframeType;
 import com.mcmp.cost.azure.collector.dto.AzureApiCredentialDto;
@@ -27,6 +29,7 @@ import com.mcmp.cost.azure.collector.dto.AzureApiCredentialDto;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -167,5 +170,65 @@ public class AzureUtils {
                                                 .withValues(List.of("Virtual Machines"))
                                 ))
                 );
+    }
+
+    /**
+     * 어제(UTC) 하루치, 비-VM 자원(ResourceId) 단위 비용.
+     * 대상: AKS managed cluster, Storage account — ResourceType dimension 필터({@link AzureResourceType#armTypes()}).
+     * grouping 은 기존 VM 쿼리와 같은 3개(ResourceGroupName, ResourceId, ResourceLocation) 로 고정한다(문서상 2개 제한, 3개 운영 확인).
+     * 응답 row: [PreTaxCost, UsageDate, ResourceGroupName, ResourceId, ResourceLocation, Currency] — 단 인덱스에 의존하지 말고 {@link #columnIndex} 사용.
+     */
+    public static QueryDefinition getQueryCostByResources() {
+        // 어제 날짜 구하기
+        LocalDate today = LocalDate.now().minusDays(1);
+        OffsetDateTime startOfDay = today.atStartOfDay().atOffset(ZoneOffset.UTC);
+        OffsetDateTime endOfDay = today.atTime(23, 59, 59).atOffset(ZoneOffset.UTC);
+
+        return new QueryDefinition()
+                .withType(ExportType.ACTUAL_COST)
+                .withTimeframe(TimeframeType.CUSTOM)
+                .withTimePeriod(new QueryTimePeriod()
+                        .withFrom(startOfDay)
+                        .withTo(endOfDay))
+                .withDataset(new QueryDataset()
+                        .withGranularity(GranularityType.DAILY)
+                        .withAggregation(
+                                Map.of(
+                                        "totalCost",
+                                        new QueryAggregation()
+                                                .withName("PreTaxCost")
+                                                .withFunction(FunctionType.SUM)
+                                )
+                        )
+                        .withGrouping(List.of(
+                                new QueryGrouping()
+                                        .withType(QueryColumnType.DIMENSION)
+                                        .withName("ResourceGroupName"),
+                                new QueryGrouping()
+                                        .withType(QueryColumnType.DIMENSION)
+                                        .withName("ResourceId"),
+                                new QueryGrouping()
+                                        .withType(QueryColumnType.DIMENSION)
+                                        .withName("ResourceLocation")
+                        ))
+                        .withFilter(new QueryFilter()
+                                .withDimensions(
+                                        new QueryComparisonExpression()
+                                                .withName("ResourceType")
+                                                .withOperator(QueryOperatorType.IN)
+                                                .withValues(AzureResourceType.armTypes())
+                                ))
+                );
+    }
+
+    /** 응답 컬럼명 → 인덱스. 고정 인덱스 대신 이름으로 해석해 grouping 순서 변경에 견디게 한다. */
+    public static Map<String, Integer> columnIndex(QueryResult queryResult) {
+        Map<String, Integer> idx = new HashMap<>();
+        List<QueryColumn> cols = queryResult.columns();
+        if (cols == null) return idx;
+        for (int i = 0; i < cols.size(); i++) {
+            idx.put(cols.get(i).name(), i);
+        }
+        return idx;
     }
 }
