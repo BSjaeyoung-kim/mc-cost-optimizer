@@ -714,25 +714,18 @@ public class VMMetaService {
                             .serviceNm(ns.getName())
                             .serviceType("OBJECT_STORAGE")
                             .workspaceCd("ws1")  // TODO: 추후 동적으로 변경 필요
-                            .vmId(os.getId())
+                            // 서버 DB 의 vm_id·mci_id 는 NOT NULL(기본값 'undefined') — K8s 행과 같은 규약(META_UNDEFINED)
+                            .vmId(os.getId() != null ? os.getId() : META_UNDEFINED)
                             .vmUid(os.getUid())
                             .vmNm(os.getName() != null ? os.getName() : os.getId())
-                            .mciId(null)
+                            .mciId(META_UNDEFINED)
                             .mciUid(null)
                             .mciNm(null)
                             .instanceRunningStatus(osStatus)
                             .build());
                 }
 
-                if(!osMetaList.isEmpty()){
-                    try{
-                        tbbDao.insertTBBServicegroupMeta(osMetaList);
-                        log.info("Inserted {} object storages for namespace: {}", osMetaList.size(), ns.getId());
-                    } catch (Exception e){
-                        // 버킷 적재 실패는 VM/K8s 동기화 결과를 되돌리지 않는다
-                        log.error("Failed to insert object storage meta for namespace: {}, error: {}", ns.getId(), e.getMessage());
-                    }
-                }
+                insertObjectStorageMeta(ns, osMetaList);
             }
         }
     }
@@ -741,6 +734,34 @@ public class VMMetaService {
      * ns 단위 K8s 메타 적재. 일괄 insert가 실패하면(예: 한 행이 컬럼 길이 초과) 행 단위로 다시 넣어
      * 문제가 된 클러스터만 건너뛴다. 어떤 경우에도 예외를 던지지 않아 이후 Object Storage·다음 ns 처리를 막지 않는다.
      */
+    /**
+     * Object Storage 메타 적재. insertK8sMeta 와 같은 방식: 배치 INSERT 가 실패하면 행 단위로 재시도해
+     * 한 행(예: 너무 긴 csp_instanceid) 때문에 나머지 버킷이 버려지지 않게 한다. 실패는 VM/K8s 결과를 되돌리지 않는다.
+     */
+    private void insertObjectStorageMeta(TBBNSItemModel ns, List<ResourcegroupMetaModel> osMetaList){
+        if(osMetaList.isEmpty()) return;
+
+        try{
+            tbbDao.insertTBBServicegroupMeta(osMetaList);
+            log.info("Inserted {} object storages for namespace: {}", osMetaList.size(), ns.getId());
+            return;
+        } catch (Exception e){
+            log.error("Batch insert of object storage meta failed for namespace: {}, retrying row by row. error: {}", ns.getId(), e.getMessage());
+        }
+
+        int inserted = 0;
+        for(ResourcegroupMetaModel row : osMetaList){
+            try{
+                tbbDao.insertTBBServicegroupMeta(List.of(row));
+                inserted++;
+            } catch (Exception e){
+                log.error("Failed to insert object storage meta: bucket={}, csp_instanceid={}, namespace={}, error: {}",
+                        row.getVmId(), row.getCspInstanceid(), ns.getId(), e.getMessage());
+            }
+        }
+        log.info("Inserted {}/{} object storages for namespace: {} (row by row)", inserted, osMetaList.size(), ns.getId());
+    }
+
     private void insertK8sMeta(TBBNSItemModel ns, List<ResourcegroupMetaModel> k8sMetaList){
         if(k8sMetaList.isEmpty()) return;
 
