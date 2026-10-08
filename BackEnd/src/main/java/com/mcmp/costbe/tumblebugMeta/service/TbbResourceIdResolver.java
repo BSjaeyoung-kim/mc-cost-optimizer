@@ -35,6 +35,25 @@ public final class TbbResourceIdResolver {
         return cspResourceId;
     }
 
+    /** AWS EKS 클러스터 ARN 형식인지 (CUR lineitem_resourceid와 매칭 가능한 형태). */
+    public static boolean isEksArn(String id) {
+        return id != null && id.startsWith("arn:aws:eks:");
+    }
+
+    /**
+     * Tumblebug 응답에 Arn이 없을 때 CUR에서 같은 클러스터의 ARN을 찾기 위한 LIKE 패턴.
+     * arn:aws:eks:{region}:{account}:cluster/{name} — region을 모르면 와일드카드. name의 LIKE 특수문자(%, _, \)는 이스케이프.
+     */
+    public static String eksArnLikePattern(String region, String clusterName) {
+        if (isBlank(clusterName)) return null;
+        String r = isBlank(region) ? "%" : escapeLike(region);
+        return "arn:aws:eks:" + r + ":%:cluster/" + escapeLike(clusterName);
+    }
+
+    private static String escapeLike(String s) {
+        return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+    }
+
     /**
      * K8s 클러스터의 CSP 계정 식별자.
      * AWS = ARN의 account id, AZURE = subscription id, GCP = SelfLink의 project id, 그 외/실패 = connectionName.

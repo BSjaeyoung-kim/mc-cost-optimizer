@@ -163,7 +163,7 @@
                     , #{prevMonth} AS yearMonth
                  FROM azure_cost_vm_daily acvd
                 INNER JOIN servicegroup_meta sm
-                   ON acvd.vm_id COLLATE utf8mb4_unicode_ci = sm.vm_uid COLLATE utf8mb4_unicode_ci
+                   ON acvd.resource_id COLLATE utf8mb4_unicode_ci = sm.csp_instanceid COLLATE utf8mb4_unicode_ci
                    AND sm.csp_type = 'AZURE'
                       <if test="selectedProjects != null and selectedProjects.size() > 0">
                   AND sm.service_cd IN
@@ -395,7 +395,7 @@
              , acvd.resource_id                AS resourceID
           FROM azure_cost_vm_daily acvd
          INNER JOIN servicegroup_meta sm
-            ON acvd.vm_id COLLATE utf8mb4_unicode_ci = sm.vm_uid COLLATE utf8mb4_unicode_ci
+            ON acvd.resource_id COLLATE utf8mb4_unicode_ci = sm.csp_instanceid COLLATE utf8mb4_unicode_ci
            AND sm.csp_type = 'AZURE'
                <if test="selectedProjects != null and selectedProjects.size() > 0">
            AND sm.service_cd IN

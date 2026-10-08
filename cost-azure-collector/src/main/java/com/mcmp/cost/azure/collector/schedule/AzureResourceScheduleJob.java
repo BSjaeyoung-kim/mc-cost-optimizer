@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Azure 비-VM 자원(AKS, Storage Account) Cost Batch 스케줄러
- * 기본 매일 한국시간 09:45 (UTC 00:45) — VM 배치(00:30 UTC) 뒤에 실행해 Cost Management 스로틀링을 분산한다.
+ * 실행 시각은 azure-schedule.resource-batch-cron (컨테이너 TZ 기준). VM 배치 뒤에 실행해 Cost Management 스로틀링을 분산한다.
  */
 @Component
 @Slf4j
@@ -24,7 +24,7 @@ public class AzureResourceScheduleJob extends QuartzJobBean {
     protected void executeInternal(JobExecutionContext context) throws JobExecutionException {
         log.info("====================================");
         log.info("Starting AZURE Resource(K8S/Object Storage) Cost Batch Quartz Job");
-        log.info("Scheduled Time: Daily 09:45 KST (00:45 UTC)");
+        log.info("Scheduled by azure-schedule.resource-batch-cron");
         log.info("====================================");
 
         try {
