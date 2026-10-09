@@ -25,7 +25,7 @@ public class NcpResourceCollectProperties {
     public static class TypeSpec {
         /** 저장용 자원 유형. K8S | OBJECT_STORAGE (servicegroup_meta.service_type 과 철자 동일) */
         private String resourceType;
-        /** getContractDemandCostList 의 demandTypeCode 필터(상위 코드, 권장). ex) OBJST */
+        /** getContractDemandCostList 의 demandTypeCode 필터(상위 코드, 권장). ex) OSSM (Object Storage 청구 유형) */
         private List<String> demandTypeCodes = new ArrayList<>();
         /** 비어있지 않으면 demandTypeDetailCode 로 필터(상세 코드). */
         private List<String> demandTypeDetailCodes = new ArrayList<>();

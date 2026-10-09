@@ -59,7 +59,7 @@ ncp:
         demand-type-codes: ${NCP_K8S_DEMAND_TYPE_CODES:}
         resolve-nks-uuid: true
       - resource-type: OBJECT_STORAGE
-        demand-type-codes: ${NCP_OBJSTG_DEMAND_TYPE_CODES:OBJST}
+        demand-type-codes: ${NCP_OBJSTG_DEMAND_TYPE_CODES:OSSM}   # 청구 유형 코드 OSSM (OBJST 는 계약 유형 코드라 이 필터에 안 걸림)
 
 # OpenBao 크레덴셜 연동 (true: OpenBao 단일소스 / false: env 우선 후 OpenBao 폴백, 기본)
 openbao:

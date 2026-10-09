@@ -111,7 +111,7 @@
 
             UNION ALL
 
-            -- D-4: NCP Object Storage — 계정 단위 계약(OBJST) 행, 최신 누적 스냅샷, Tumblebug OBJECT_STORAGE 메타가 있을 때만 1회 포함
+            -- D-4: NCP Object Storage — 계정 단위(OSSM) 행, 최신 누적 스냅샷, Tumblebug OBJECT_STORAGE 메타가 있을 때만 1회 포함
             SELECT nro.demand_month COLLATE utf8mb4_unicode_ci AS yearMonth
                  , SUM(nro.demand_amount) / ${krwPerUsd} AS bill
               FROM (
@@ -347,7 +347,7 @@
 
         UNION ALL
 
-        <!-- D-4: NCP Object Storage — 계정 단위 계약(OBJST) 행, 최신 누적 스냅샷, Tumblebug OBJECT_STORAGE 메타가 있을 때만 1회 포함 -->
+        <!-- D-4: NCP Object Storage — 계정 단위(OSSM) 행, 최신 누적 스냅샷, Tumblebug OBJECT_STORAGE 메타가 있을 때만 1회 포함 -->
         SELECT nro.member_no COLLATE utf8mb4_unicode_ci AS accountID
             , 'Object Storage' COLLATE utf8mb4_unicode_ci AS productID
             , 'NCP' AS csp

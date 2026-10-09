@@ -49,7 +49,7 @@ public class NcpCostResourceMonth extends AuditEntity {
     @Column(name = "resource_type", nullable = false, length = 20)
     private String resourceType;
 
-    /** 청구 유형 코드. ex) OBJST */
+    /** 청구 유형 코드. ex) OSSM */
     @Column(name = "demand_type_code", nullable = false, length = 20)
     private String demandTypeCode;
 

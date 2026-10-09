@@ -72,7 +72,7 @@ public class NcpCostResourceServiceImpl implements NcpCostResourceService {
                     continue;
                 }
                 for (ContractDemandCost c : rows) {
-                    if (c.getContract() == null) {
+                    if (c.getContract() == null && !"OBJECT_STORAGE".equals(spec.getResourceType())) {
                         log.warn("[{}] contract 가 없는 행은 건너뜁니다. memberNo={}, demandMonth={}", spec.getResourceType(), c.getMemberNo(), c.getDemandMonth());
                         continue;
                     }

@@ -382,7 +382,7 @@ CREATE TABLE IF NOT EXISTS `ncp_cost_vm_daily` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci COMMENT='NCP VM 일별 비용 데이터 (월별 데이터에서 계산)';
 
 -- NCP 자원(K8S / OBJECT_STORAGE) 계약별 월 누적 청구 비용 — ncp_cost_vm_month 자매 테이블 (server_spec_code 없음)
---   resource_id = servicegroup_meta.csp_instanceid 조인 키 (K8S = NKS 클러스터 UUID, OBJECT_STORAGE = instance_no[계정 단위 계약])
+--   resource_id = servicegroup_meta.csp_instanceid 조인 키 (K8S = NKS 클러스터 UUID, OBJECT_STORAGE = member_no[계정 단위])
 --   UNIQUE 키가 재실행 dedupe 의 실체 (snapshot_date = DATE(write_date), 하루 1 스냅샷/키)
 CREATE TABLE IF NOT EXISTS `ncp_cost_resource_month` (
     `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '아이디',
@@ -392,7 +392,7 @@ CREATE TABLE IF NOT EXISTS `ncp_cost_resource_month` (
     `demand_month` varchar(6) NOT NULL COMMENT '청구 월. ex) 202510',
     `region_code` varchar(10) NOT NULL DEFAULT 'KR' COMMENT '리전 코드',
     `resource_type` varchar(20) NOT NULL COMMENT 'K8S | OBJECT_STORAGE',
-    `demand_type_code` varchar(20) NOT NULL COMMENT '청구 유형 코드. ex) OBJST',
+    `demand_type_code` varchar(20) NOT NULL COMMENT '청구 유형 코드. ex) OSSM',
     `demand_type_name` varchar(100) DEFAULT NULL COMMENT '청구 유형 이름',
     `demand_type_detail_code` varchar(20) NOT NULL DEFAULT '' COMMENT '청구 유형 상세 코드',
     `demand_type_detail_name` varchar(100) DEFAULT NULL COMMENT '청구 유형 상세 이름',
@@ -403,7 +403,7 @@ CREATE TABLE IF NOT EXISTS `ncp_cost_resource_month` (
     `instance_name` varchar(200) DEFAULT NULL COMMENT 'NCP 인스턴스 이름(원본, contract.instanceName)',
     `resource_id` varchar(200) NOT NULL COMMENT 'servicegroup_meta.csp_instanceid 조인 키 (K8S = NKS 클러스터 UUID)',
     `resource_name` varchar(200) DEFAULT NULL COMMENT '자원 표시 이름 (K8S = 클러스터명)',
-    `resource_id_source` varchar(20) NOT NULL COMMENT 'resource_id 출처. NKS_UUID | INSTANCE_NO | CONTRACT_NO',
+    `resource_id_source` varchar(20) NOT NULL COMMENT 'resource_id 출처. NKS_UUID | INSTANCE_NO | CONTRACT_NO | MEMBER_NO',
     `usage_unit_code` varchar(50) NOT NULL DEFAULT '' COMMENT '사용량 단위 코드',
     `usage_unit_name` varchar(100) NOT NULL DEFAULT '' COMMENT '사용량 단위 이름',
     `product_price` double NOT NULL DEFAULT 0 COMMENT '상품 가격',
@@ -441,7 +441,7 @@ CREATE TABLE IF NOT EXISTS `ncp_cost_resource_daily` (
     `instance_name` varchar(200) DEFAULT NULL COMMENT 'NCP 인스턴스 이름(원본)',
     `resource_id` varchar(200) NOT NULL COMMENT 'servicegroup_meta.csp_instanceid 조인 키',
     `resource_name` varchar(200) DEFAULT NULL,
-    `resource_id_source` varchar(20) NOT NULL COMMENT 'NKS_UUID | INSTANCE_NO | CONTRACT_NO',
+    `resource_id_source` varchar(20) NOT NULL COMMENT 'NKS_UUID | INSTANCE_NO | CONTRACT_NO | MEMBER_NO',
     `usage_unit_code` varchar(50) NOT NULL DEFAULT '',
     `usage_unit_name` varchar(100) NOT NULL DEFAULT '',
     `product_price` double NOT NULL DEFAULT 0,

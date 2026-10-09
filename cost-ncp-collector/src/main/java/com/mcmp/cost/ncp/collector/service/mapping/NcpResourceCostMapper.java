@@ -16,11 +16,12 @@ import java.util.function.Function;
  * ContractDemandCost → NcpCostResourceMonth 순수 매핑 (vserver 상세조회 없음).
  *
  * <p>resource_id 결정 순서: K8S 는 NKS 목록의 uuid(NKS_UUID) → 과거 적재 행에서 uuid 복원(NKS_UUID) → instanceNo(INSTANCE_NO) → contractNo(CONTRACT_NO).
+ * OBJECT_STORAGE 는 계정 단위 과금(OSSM)이라 계약 정보가 없는 행이 오므로, 그때는 계정 번호(MEMBER_NO)를 resource_id 로 쓴다.
  * Tumblebug 은 NKS 클러스터를 uuid 로 알고 있어서 NKS_UUID 만 servicegroup_meta 와 1:1 매칭된다.
  */
 public final class NcpResourceCostMapper {
 
-    public enum IdSource { NKS_UUID, INSTANCE_NO, CONTRACT_NO }
+    public enum IdSource { NKS_UUID, INSTANCE_NO, CONTRACT_NO, MEMBER_NO }
 
     private NcpResourceCostMapper() {}
 
@@ -54,6 +55,11 @@ public final class NcpResourceCostMapper {
             resourceId = contractNo;
             resourceName = instanceName;
             source = IdSource.CONTRACT_NO;
+        } else if ("OBJECT_STORAGE".equals(resourceType) && trimToNull(c.getMemberNo()) != null) {
+            // 2026-10-09 실응답: OSSM 행은 contract 의 계약·인스턴스 번호가 비어 있고 청구 상세(OSSZ, OSAM1 …)별로만 나뉜다 → 계정 단위 1자원
+            resourceId = c.getMemberNo().trim();
+            resourceName = instanceName;
+            source = IdSource.MEMBER_NO;
         } else {
             throw new IllegalArgumentException("resource_id 를 결정할 수 없습니다 (instanceNo/contractNo 모두 없음): memberNo="
                     + c.getMemberNo() + ", demandMonth=" + c.getDemandMonth());

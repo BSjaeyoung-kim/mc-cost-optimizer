@@ -152,7 +152,7 @@ SELECT (
                  AND 1=0
                      </if>
               ) + (
-              -- 현재월 D-4: NCP Object Storage — 계정 단위 계약(OBJST) 행, 최신 누적 스냅샷, Tumblebug OBJECT_STORAGE 메타가 있을 때만 1회 포함
+              -- 현재월 D-4: NCP Object Storage — 계정 단위(OSSM) 행, 최신 누적 스냅샷, Tumblebug OBJECT_STORAGE 메타가 있을 때만 1회 포함
               SELECT COALESCE(SUM(nro.demand_amount), 0) / ${krwPerUsd}
                 FROM (
                      SELECT o1.resource_id, o1.resource_type, o1.member_no, o1.demand_month, o1.demand_amount
@@ -313,7 +313,7 @@ SELECT (
                  AND 1=0
                      </if>
               ) + (
-              -- 이전월 D-4: NCP Object Storage — 계정 단위 계약(OBJST) 행, 최신 누적 스냅샷, Tumblebug OBJECT_STORAGE 메타가 있을 때만 1회 포함
+              -- 이전월 D-4: NCP Object Storage — 계정 단위(OSSM) 행, 최신 누적 스냅샷, Tumblebug OBJECT_STORAGE 메타가 있을 때만 1회 포함
               SELECT COALESCE(SUM(nro.demand_amount), 0) / ${krwPerUsd}
                 FROM (
                      SELECT o1.resource_id, o1.resource_type, o1.member_no, o1.demand_month, o1.demand_amount
@@ -530,7 +530,7 @@ SELECT ym.`year_month`
 
        UNION ALL
 
-       -- D-4: NCP Object Storage — 계정 단위 계약(OBJST) 행, 최신 누적 스냅샷, Tumblebug OBJECT_STORAGE 메타가 있을 때만 1회 포함
+       -- D-4: NCP Object Storage — 계정 단위(OSSM) 행, 최신 누적 스냅샷, Tumblebug OBJECT_STORAGE 메타가 있을 때만 1회 포함
        SELECT nro.demand_month COLLATE utf8mb4_unicode_ci AS `year_month`
               , SUM(nro.demand_amount) / ${krwPerUsd} AS total_cost
          FROM (
@@ -746,7 +746,7 @@ SELECT service_name AS resourceNm
                  END
        UNION ALL
 
-       <!-- D-4: NCP Object Storage — 계정 단위 계약(OBJST) 행, 최신 누적 스냅샷, Tumblebug OBJECT_STORAGE 메타가 있을 때만 1회 포함 -->
+       <!-- D-4: NCP Object Storage — 계정 단위(OSSM) 행, 최신 누적 스냅샷, Tumblebug OBJECT_STORAGE 메타가 있을 때만 1회 포함 -->
        SELECT 'Object Storage' COLLATE utf8mb4_unicode_ci AS service_name
               , COALESCE(SUM(nro.demand_amount), 0) / ${krwPerUsd} AS total_cost
               , 'NCP' COLLATE utf8mb4_unicode_ci AS csp
@@ -1055,7 +1055,7 @@ SELECT service_name AS resourceNm
 
        UNION ALL
 
-       -- D-4: NCP Object Storage — 계정 단위 계약(OBJST) 일별 차분 행, Tumblebug OBJECT_STORAGE 메타가 있을 때만 1회 포함
+       -- D-4: NCP Object Storage — 계정 단위(OSSM) 일별 차분 행, Tumblebug OBJECT_STORAGE 메타가 있을 때만 1회 포함
        SELECT COALESCE(SUM(ncrd.daily_charge_amount), 0) / ${krwPerUsd} AS bill
               , 'Object Storage' COLLATE utf8mb4_unicode_ci AS childProductCode
               , COUNT(DISTINCT ncrd.resource_id) AS unit
@@ -1280,7 +1280,7 @@ SELECT csp, SUM(cost) AS cost
 
        UNION ALL
 
-       <!-- D-4: NCP Object Storage — 계정 단위 계약(OBJST) 행, 최신 누적 스냅샷, Tumblebug OBJECT_STORAGE 메타가 있을 때만 1회 포함 -->
+       <!-- D-4: NCP Object Storage — 계정 단위(OSSM) 행, 최신 누적 스냅샷, Tumblebug OBJECT_STORAGE 메타가 있을 때만 1회 포함 -->
        SELECT 'NCP'                                               AS csp,
               COALESCE(SUM(nro.demand_amount), 0) / ${krwPerUsd} AS cost
          FROM (
